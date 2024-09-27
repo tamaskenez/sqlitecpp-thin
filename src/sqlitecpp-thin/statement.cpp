@@ -47,7 +47,7 @@ statement::~statement()
 
 statement& statement::operator=(statement&& y)
 {
-    auto was_this = statement(MOVE(*this));
+    auto was_this = MOVE(*this);
     std::swap(_stmt, y._stmt);
     return *this;
 }

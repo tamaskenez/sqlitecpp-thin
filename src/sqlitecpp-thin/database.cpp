@@ -23,7 +23,7 @@ database::database(database&& y)
 
 database& database::operator=(database&& y)
 {
-    auto was_this = database(MOVE(*this));
+    auto was_this = MOVE(*this);
     std::swap(_db, y._db);
     return *this;
 }

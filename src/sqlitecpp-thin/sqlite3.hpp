@@ -4,8 +4,12 @@
 
 #include <concepts>
 #include <cstdint>
-#include <exception>
-#include <expected>
+#if defined SQLITECPPTHIN_EXCEPTION && SQLITECPPTHIN_EXCEPTION
+  #include <exception>
+#endif
+#if defined SQLITECPPTHIN_EXPECTED && SQLITECPPTHIN_EXPECTED
+  #include <expected>
+#endif
 #include <filesystem>
 #include <functional>
 #include <optional>
@@ -127,7 +131,7 @@ public:
     const char* errmsg() const;
     int error_offset() const;
 
-    error error() const;
+    error get_error() const;
 
     string format() const;
 
@@ -136,6 +140,7 @@ private:
     sqlite3* _db = nullptr;
 };
 
+#if defined SQLITECPPTHIN_EXCEPTION && SQLITECPPTHIN_EXCEPTION
 class exception : public std::exception
 {
 public:
@@ -153,7 +158,7 @@ public:
     const char* errmsg() const;
     int error_offset() const;
 
-    error error() const;
+    error get_error() const;
 
 private:
     const char* what() const noexcept override
@@ -162,6 +167,7 @@ private:
     }
     std::variant<sqlite::error, current_error> _error;
 };
+#endif
 
 enum class step_result {
     row = SQLITE_ROW,

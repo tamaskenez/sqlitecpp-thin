@@ -24,6 +24,8 @@ auto switch_variant(Variant&& variant, Ts&&... ts)
 }
 } // namespace
 
+#if SQLITECPPTHIN_EXCEPTION
+
 int exception::errcode() const
 {
     return switch_variant(
@@ -76,18 +78,20 @@ int exception::error_offset() const
     );
 }
 
-error exception::error() const
+error exception::get_error() const
 {
     return switch_variant(
       _error,
       [](const current_error& e) {
-          return e.error();
+          return e.get_error();
       },
       [](const sqlite::error& e) {
           return e;
       }
     );
 }
+
+#endif
 
 expected<database, error> open(const char* filename, int flags)
 {

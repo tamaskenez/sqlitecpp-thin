@@ -82,7 +82,6 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "C
       list(APPEND PROJECT_WARNING_FLAGS
         -Wduplicated-cond           # Warn about duplicated conditions in an if-else-if chain.
         -Wmisleading-indentation    # Warn when indentation does not reflect the block structure.
-        -Wmultiple-inheritance      # Do not allow multiple inheritance.
         -Wnull-dereference          # Dereferencing a pointer may lead to undefined behavior.
         )
     endif ()

@@ -1,29 +1,49 @@
 name: Build and Test
 on: [push]
+
+env:
+  CONAN_VERSION: 2.7.1
+
 jobs:
-  Build-And-Test-Ubuntu:
-    runs-on: ubuntu-latest
+  Build-And-Test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
+      # Workaround for "error: externally-managed-environment" when installing Conan.
+      # See https://stackoverflow.com/questions/75608323/how-do-i-solve-error-externally-managed-environment-every-time-i-use-pip-3
+      - name: Allow `--break-system-packages` for pip
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: |
+          mkdir -p ~/.config/pip
+          cd ~/.config/pip
+          echo "[global]" >pip.conf
+          echo "break-system-packages = true" >>pip.conf
+      - name: Install Conan
+        uses: turtlebrowser/get-conan@main
+        with:
+          version: ${{ env.CONAN_VERSION }}
+      - name: Enable gcc-12
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 60
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 60
+          sudo update-alternatives --set gcc /usr/bin/gcc-12
+          sudo update-alternatives --set g++ /usr/bin/g++-12
+          gcc --version
+          g++ --version
       - name: Check out repository code
         uses: actions/checkout@v4
-      - name: List files in the repository
-        run: |
-          ls ${{ github.workspace }}
-
-  Build-And-Test-Windows:
-    runs-on: windows-latest
-    steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
-      - name: List files in the repository
-        run: |
-          ls ${{ github.workspace }}
-
-  Build-And-Test-Mac:
-    runs-on: mac-latest
-    steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
-      - name: List files in the repository
-        run: |
-          ls ${{ github.workspace }}
+      - name: Build conan dependencies
+        shell: bash
+        run: ./1_build_conan_deps.sh
+      - name: Configure project
+        shell: bash
+        run: cmake -S . -B b -D CMAKE_BUILD_TYPE=Debug -D BUILD_TESTING=ON
+      - name: Build project
+        shell: bash
+        run: cmake --build b --config Debug -j
+      - name: Test
+        shell: bash
+        run: ctest -C Debug --test-dir b -V

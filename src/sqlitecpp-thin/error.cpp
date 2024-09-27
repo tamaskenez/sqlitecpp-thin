@@ -1,7 +1,21 @@
 #include "sqlite3.hpp"
 
 #include <cassert>
-#include <format>
+
+#ifdef HAS_FORMAT
+  #include <format>
+#else
+  #include "fmt/core.h"
+#endif
+
+namespace format
+{
+#ifdef HAS_FORMAT
+using std::format;
+#else
+using fmt::format;
+#endif
+} // namespace format
 
 namespace sqlite
 {
@@ -41,7 +55,7 @@ int current_error::error_offset() const
     return sqlite3_error_offset(_db);
 }
 
-error current_error::error() const
+error current_error::get_error() const
 {
     return sqlite::error{
       .errcode = _errcode, .extended_errcode = extended_errcode(), .errmsg = errmsg(), .error_offset = error_offset()
@@ -64,17 +78,19 @@ string error::format() const
     };
 
     auto maybe_offset = [this]() {
-        return error_offset >= 0 ? std::format(" at char {}", error_offset) : string();
+        return error_offset >= 0 ? format::format(" at char {}", error_offset) : string();
     };
 
     const char* errstr = sqlite3_errstr(extended_errcode);
     if (errstr) {
-        return std::format("{} ({}){}: \"{}\"", errstr, macro_name_or_number(extended_errcode), maybe_offset(), errmsg);
+        return format::format(
+          "{} ({}){}: \"{}\"", errstr, macro_name_or_number(extended_errcode), maybe_offset(), errmsg
+        );
     }
 
     if (errcode != extended_errcode) {
         if (errstr = sqlite3_errstr(errcode); errstr) {
-            return std::format(
+            return format::format(
               "{} ({}){}: \"{}\", extended_errcode ({}) is invalid",
               errstr,
               macro_name_or_number(errcode),
@@ -86,7 +102,7 @@ string error::format() const
     }
 
     // Both errcode and extended_errcode are invalid, which means `sqlite3_errstr()` returns nullptr
-    return std::format(
+    return format::format(
       "Unknown SQL error{}: \"{}\", both errcode ({}) and extended_errcode ({}) are invalid",
       maybe_offset(),
       errmsg,
@@ -97,7 +113,7 @@ string error::format() const
 
 string current_error::format() const
 {
-    return error().format();
+    return get_error().format();
 }
 
 } // namespace sqlite
