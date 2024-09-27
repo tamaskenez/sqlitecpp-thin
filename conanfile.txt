@@ -1,0 +1,7 @@
+[requires]
+
+sqlite3/3.46.1
+gtest/1.15.0
+
+[generators]
+CMakeDeps
