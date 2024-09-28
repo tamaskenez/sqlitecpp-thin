@@ -6,17 +6,28 @@ Thin C++ wrapper for the SQLite C API.
 
 The goal of this wrapper is to expose the SQLite API to C++ in a straightforward way, staying as close as possible to the original C API. There are no fancy C++ abstractions, even the SQLite C API documentation remains applicable.
 
-Key features:
+## Key features:
 
 - Support for C++ types.
 - C++ error handling patterns: exceptions and `std::expected`
 - RAII on SQLite objects.
+- The wrapper does not try to abstract away the C API: for example, `bind_blob` and `bind_text` remain two separate functions.
 
-## Error handling
+### Support for C++ types.
+
+`bind_*` and `column_*` functions accept and return `std::string`, `std::string_view`, `std::span<const std::byte>`
+
+### Error handling
 
 `std::expected` is in many ways superior to exceptions. However, due to the lack of native language support, `std::expected` can be cumbersome to use.
 
 For this reason, the library is available in two versions — one using `std::expected` and the other using exceptions.
+
+They are compiled from the very same sources, the `std::expected<T, E>` return types become simply `T` in the exception-throwing version.
+
+### Straightforward mapping to the C API
+
+It's always obvious which underlying SQLite-C function gets called. Unlike in other SQLite/C++ wrappers, overloads don't obscure important details, like difference between `bind_blob` and `bind_text`.
 
 ## Status
 
