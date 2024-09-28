@@ -21,7 +21,4 @@ using std::nullopt;
 #else
   #error Either SQLITECPPTHIN_EXCEPTION or SQLITECPPTHIN_EXPECTED must be defined to 1.
 #endif
-
-error create_error_for_db(sqlite3* db);
-
 } // namespace sqlite

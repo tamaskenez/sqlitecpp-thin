@@ -1,4 +1,4 @@
-![CI](https://github.com/tamaskenez/sqlitecpp-thin/actions/workflows/build-and-test.yml/badge.svg)
+![Build and Test](https://github.com/tamaskenez/sqlitecpp-thin/actions/workflows/build-and-test.yml/badge.svg)
 
 # SQLITECPP-THIN
 

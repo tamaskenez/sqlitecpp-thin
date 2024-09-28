@@ -318,7 +318,8 @@ public:
     // sqlite3_column_int64().
     expected<int64_t, current_error> column_int64(int col);
 
-    // sqlite3_column_text() and sqlite3_column_bytes64().
+    // sqlite3_column_text() and sqlite3_column_bytes64()
+    // The `data()` of the returned value can be used as `const char*` since it's zero-terminated.
     expected<string_view, current_error> column_text(int col);
 
     // sqlite3_column_type().
