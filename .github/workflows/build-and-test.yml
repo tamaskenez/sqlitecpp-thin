@@ -47,6 +47,18 @@ jobs:
       - name: Test
         shell: bash
         run: ./2_config_build_install_test.sh test
+      - name: Debug Windows
+        shell: bash
+        run: |
+          pwd
+          echo "ls -l i"
+          ls -l i
+          echo "ls -l i/lib"
+          ls -l i/lib
+          echo "ls -l i/lib/cmake"
+          ls -l i/lib/cmake
+          echo "ls -l i/lib/cmake/sqlitecpp-thin"
+          ls -l i/lib/cmake/sqlitecpp-thin
       - name: Build and test installed library.
         shell: bash
         run: ./3_test-installed-lib.sh
