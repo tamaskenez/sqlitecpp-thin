@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.25)
 project(test-installed-lib)
 
+message(STATUS "CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
+list(LENGTH CMAKE_PREFIX_PATH l)
+message(STATUS "length: ${l}")
+foreach(a IN LISTS CMAKE_PREFIX_PATH)
+	message(STATUS ${a})
+endforeach()
+message(STATUS "----")
+
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)
 
 enable_testing()
