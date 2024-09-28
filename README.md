@@ -1,3 +1,5 @@
+https://github.com/tamaskenez/sqlitecpp-thin/actions/workflows/build-and-test.yml/badge.svg
+
 # SQLITECPP-THIN
 
 Thin C++ wrapper for the SQLite C API.
