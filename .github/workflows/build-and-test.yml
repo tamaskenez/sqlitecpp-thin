@@ -40,10 +40,13 @@ jobs:
         run: ./1_build_conan_deps.sh
       - name: Configure project
         shell: bash
-        run: cmake -S . -B b -D CMAKE_BUILD_TYPE=Debug -D BUILD_TESTING=ON
-      - name: Build project
+        run: ./2_config_build_install_test.sh config
+      - name: Build & install project
         shell: bash
-        run: cmake --build b --config Debug -j
+        run: ./2_config_build_install_test.sh build_install
       - name: Test
         shell: bash
-        run: ctest -C Debug --test-dir b -V
+        run: ./2_config_build_install_test.sh test
+      - name: Build and test installed library.
+        shell: bash
+        run: ./3_test-installed-lib.sh
