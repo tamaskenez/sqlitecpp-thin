@@ -182,6 +182,7 @@ enum class datatype {
     text = SQLITE_TEXT
 };
 
+// Return the name of the C macro (e.g. "SQLITE_BUSY") for the error code. `nullptr` if the error code is not valid.
 const char* errcode_macro_name(int rc);
 
 class statement
