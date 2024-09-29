@@ -41,5 +41,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 		-Wunsafe-loop-optimizations # The loop cannot be optimized because the compiler cannot assume anything.
 		-Wunused                    # Enable all -Wunused- warnings.
 		-Wuseless-cast              # Warn about useless casts.
+
+		-Wno-multiple-inheritance
 	)
 endif()
