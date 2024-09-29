@@ -266,11 +266,12 @@ expected<void, current_error> statement::bind_int(int index, int i)
     RETURN_VOID;
 }
 
-expected<void, current_error> statement::bind_int64(int index, int64_t i)
+expected<void, current_error> statement::bind_int(int index, int64_t i)
 {
     RETURN_UNEXPECTED_ON_ERROR(sqlite3_bind_int64(_stmt, index, i))
     RETURN_VOID;
 }
+
 expected<void, current_error> statement::bind_null(int index)
 {
     RETURN_UNEXPECTED_ON_ERROR(sqlite3_bind_null(_stmt, index))

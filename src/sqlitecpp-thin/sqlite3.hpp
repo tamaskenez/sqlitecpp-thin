@@ -16,7 +16,6 @@
 #include <span>
 #include <string>
 #include <string_view>
-#include <variant>
 
 namespace sqlite
 {
@@ -144,28 +143,24 @@ private:
 class exception : public std::exception
 {
 public:
-    explicit exception(error e)
-        : _error(std::move(e))
-    {
-    }
-    explicit exception(current_error e)
-        : _error(std::move(e))
-    {
-    }
+    explicit exception(error e);
+    explicit exception(current_error e);
 
-    int errcode() const;
-    int extended_errcode() const;
-    const char* errmsg() const;
-    int error_offset() const;
-
-    error get_error() const;
-
-private:
     const char* what() const noexcept override
     {
-        return errmsg();
+        return _what.c_str();
     }
-    std::variant<sqlite::error, current_error> _error;
+
+    const error& get_error() const
+    {
+        return _error;
+    }
+
+private:
+    // We can't store the more lightweight `current_error` since the stack unwinding can destruct the database and
+    // `current_error` needs it.
+    sqlite::error _error;
+    std::string _what;
 };
 #endif
 
@@ -256,7 +251,29 @@ public:
     SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_int(int index, int i);
 
     // sqlite3_bind_int64().
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_int64(int index, int64_t i);
+    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_int(int index, int64_t i);
+
+    // Accept all integers which can safely be converted to `int` (and exclude `int` itself)
+    template<class T>
+        requires(
+          !std::same_as<T, int>
+          && ((std::signed_integral<T> && sizeof(T) <= sizeof(int)) || (std::unsigned_integral<T> && sizeof(T) + 1 <= sizeof(int)))
+        )
+    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_int(int index, T i)
+    {
+        return bind_int(index, int(i));
+    }
+
+    // Accept all integers which can safely be converted to `int64_t` (and exclude `int64_t` itself)
+    template<class T>
+        requires(
+          !std::same_as<T, int64_t>
+          && ((std::signed_integral<T> && sizeof(T) <= sizeof(int64_t)) || (std::unsigned_integral<T> && sizeof(T) + 1 <= sizeof(int64_t)))
+        )
+    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_int(int index, T i)
+    {
+        return bind_int(index, int64_t(i));
+    }
 
     // sqlite3_bind_null().
     SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_null(int index);
