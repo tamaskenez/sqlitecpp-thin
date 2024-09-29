@@ -8,6 +8,7 @@
 
 #include "sqlitecpp-thin/sqlite3-exception.hpp"
 
+#include <array>
 #include <cassert>
 #include <climits>
 #include <cmath>
@@ -16,8 +17,11 @@
 #include <filesystem>
 #include <iostream>
 #include <random>
+#include <string_view>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 namespace fs = std::filesystem;
 
