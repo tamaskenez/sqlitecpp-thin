@@ -89,14 +89,14 @@ size_t int_storage_test(const std::vector<AI3>& data, bool use_int64)
             };
             std::unordered_map<int, BC> map;
             for (auto& r : data) {
-                auto itb = map.insert(std::pair(r[0], BC{.b = r[1], .c = r[2]}));
+                [[maybe_unused]] auto itb = map.insert(std::pair(r[0], BC{.b = r[1], .c = r[2]}));
                 assert(itb.second);
             }
             auto stmt = db.prepare("SELECT a, b, c FROM integers");
             while (stmt.step() == sqlite::step_result::row) {
                 auto a = stmt.column_int(0);
-                auto b = stmt.column_int(1);
-                auto c = stmt.column_int(2);
+                [[maybe_unused]] auto b = stmt.column_int(1);
+                [[maybe_unused]] auto c = stmt.column_int(2);
                 auto it = map.find(a);
                 if (it != map.end()) {
                     assert(it->second.b == b);
