@@ -140,7 +140,7 @@ private:
 };
 
 #if defined SQLITECPPTHIN_EXCEPTION && SQLITECPPTHIN_EXCEPTION
-class exception : public std::exception
+class exception final : public std::exception
 {
 public:
     explicit exception(error e);
