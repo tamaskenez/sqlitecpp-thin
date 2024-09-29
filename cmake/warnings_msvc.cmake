@@ -1,5 +1,5 @@
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-	add_compiler_options(
+	add_compile_options(
 		/WX
 
 		/permissive- # Specify standards conformance mode to the compiler.

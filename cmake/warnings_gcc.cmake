@@ -20,7 +20,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 		-Wimplicit-fallthrough
 		-Wlogical-op                # Warn when a logical operator is always evaluating to true or false.
 		-Wmisleading-indentation    # Warn when indentation does not reflect the block structure.
-		-Wmultiple-inheritance      # Do not allow multiple inheritance.
 		-Wnon-virtual-dtor          # Non-virtual destructors are found.
 		-Wnull-dereference          # Dereferencing a pointer may lead to undefined behavior.
 		-Wold-style-cast            # C-style cast is used in a program.
@@ -41,7 +40,5 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 		-Wunsafe-loop-optimizations # The loop cannot be optimized because the compiler cannot assume anything.
 		-Wunused                    # Enable all -Wunused- warnings.
 		-Wuseless-cast              # Warn about useless casts.
-
-		-Wno-multiple-inheritance
 	)
 endif()
