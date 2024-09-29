@@ -41,8 +41,8 @@ if(BUILD_TESTING)
 endif()
 find_package(SQLite3 REQUIRED)
 
-set(WARNINGS_AS_ERRORS 1)
-include(cpp_warnings.cmake)
-add_compile_options(${PROJECT_WARNING_FLAGS})
+include(cmake/warnings_clang.cmake)
+include(cmake/warnings_gcc.cmake)
+include(cmake/warnings_msvc.cmake)
 
 add_subdirectory(src)
