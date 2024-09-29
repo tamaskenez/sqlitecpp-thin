@@ -9,6 +9,7 @@
 #include "sqlitecpp-thin/sqlite3-exception.hpp"
 
 #include <cassert>
+#include <climits>
 #include <cmath>
 #include <cstdlib>
 #include <ctime>

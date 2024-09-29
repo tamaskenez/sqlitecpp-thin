@@ -32,7 +32,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 		-Wsuggest-final-methods     # Virtual methods that could be declared final or in an anonymous namespace.
 		-Wsuggest-final-types       # Types with virtual methods that can be declared final or in an anonymous namespace.
 		-Wsuggest-override          # Overriding virtual functions that are not marked with the override keyword.
-		-Wswitch-default            # A switch statement does not have a default case.
 		-Wswitch-enum               # A switch statement has an index of enumerated type and lacks a case.
 		-Wundef                     # An undefined identifier is evaluated in an #if directive.
 		-Wuninitialized
