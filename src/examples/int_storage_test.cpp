@@ -24,6 +24,8 @@ constexpr std::string_view k_temp_dir_subdir = "sqlitecpp-thin-examples";
 
 using AI3 = std::array<int, 3>;
 
+namespace
+{
 size_t int_storage_test(const std::vector<AI3>& data, bool use_int64)
 {
     auto system_temp_dir = fs::temp_directory_path();
@@ -108,6 +110,7 @@ size_t int_storage_test(const std::vector<AI3>& data, bool use_int64)
 
     return fs::file_size(temp_file_path);
 }
+} // namespace
 
 int main()
 {
