@@ -3,6 +3,8 @@
 #include "common.hpp"
 
 #include <cassert>
+#include <utility>
+#include <variant>
 
 namespace sqlite
 {
@@ -36,69 +38,16 @@ error create_error_for_db(sqlite3* db)
 
 #if SQLITECPPTHIN_EXCEPTION
 
-int exception::errcode() const
+exception::exception(error e)
+    : _error(std::move(e))
+    , _what(_error.format())
 {
-    return switch_variant(
-      _error,
-      [](const current_error& e) {
-          return e.errcode();
-      },
-      [](const sqlite::error& e) {
-          return e.errcode;
-      }
-    );
 }
 
-int exception::extended_errcode() const
+exception::exception(current_error e)
+    : _error(e.get_error())
+    , _what(_error.format())
 {
-    return switch_variant(
-      _error,
-      [](const current_error& e) {
-          return e.extended_errcode();
-      },
-      [](const sqlite::error& e) {
-          return e.extended_errcode;
-      }
-    );
-}
-
-const char* exception::errmsg() const
-{
-    return switch_variant(
-      _error,
-      [](const current_error& e) {
-          return e.errmsg();
-      },
-      [](const sqlite::error& e) {
-          return e.errmsg.c_str();
-      }
-    );
-}
-
-int exception::error_offset() const
-{
-    return switch_variant(
-      _error,
-      [](const current_error& e) {
-          return e.error_offset();
-      },
-      [](const sqlite::error& e) {
-          return e.error_offset;
-      }
-    );
-}
-
-error exception::get_error() const
-{
-    return switch_variant(
-      _error,
-      [](const current_error& e) {
-          return e.get_error();
-      },
-      [](const sqlite::error& e) {
-          return e;
-      }
-    );
 }
 
 #endif
