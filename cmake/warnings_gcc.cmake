@@ -17,7 +17,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 		-Wextra                     # Enables an extra set of warnings.
 		-Wextra-semi                # Redundant semicolons after in-class function definitions.
 		-Wformat=2                  # printf/scanf/strftime/strfmon format string anomalies.
-		-Wfour-char-constants
 		-Wimplicit-fallthrough
 		-Wlogical-op                # Warn when a logical operator is always evaluating to true or false.
 		-Wmisleading-indentation    # Warn when indentation does not reflect the block structure.
