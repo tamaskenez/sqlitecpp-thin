@@ -1,7 +1,3 @@
-#include SQLITECPPTHIN_HEADER
-
-#include "gtest/gtest.h"
-
 #include <expected>
 
 // Macro/template magic to convert function results to uniform std::expected<T, sqlite::error>, no matter whether the
