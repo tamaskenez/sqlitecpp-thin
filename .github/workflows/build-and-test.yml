@@ -37,7 +37,9 @@ jobs:
         uses: actions/checkout@v4
       - name: Build conan dependencies
         shell: bash
-        run: ./1_build_conan_deps.sh
+        run: |
+            conan profile detect
+            ./1_build_conan_deps.sh
       - name: Configure project
         shell: bash
         run: ./2_config_build_install_test.sh config
