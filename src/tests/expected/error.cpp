@@ -37,6 +37,11 @@ TEST(expected_error, failing_nonvoid_function_with_current_error)
             EXPECT_EQ(e.extended_errcode, sqlite3_extended_errcode(pdb));
             EXPECT_EQ(e.errmsg, sqlite3_errmsg(pdb));
             EXPECT_EQ(e.error_offset, sqlite3_error_offset(pdb));
+
+            EXPECT_EQ(db.errcode(), sqlite3_errcode(pdb));
+            EXPECT_EQ(db.extended_errcode(), sqlite3_extended_errcode(pdb));
+            EXPECT_EQ(db.errmsg(), sqlite3_errmsg(pdb));
+            EXPECT_EQ(db.error_offset(), sqlite3_error_offset(pdb));
         }
     }
 }
