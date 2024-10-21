@@ -71,7 +71,7 @@ expected<int, current_error> database::exec_changes(string_like_zt sql)
     return sqlite3_changes(_db);
 }
 
-string database::errmsg() const
+const char* database::errmsg() const
 {
     return sqlite3_errmsg(_db);
 }

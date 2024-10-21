@@ -396,7 +396,7 @@ public:
     [[nodiscard]] expected<int, current_error> exec_changes(string_like_zt sql);
 
     // sqlite3_errmsg().
-    string errmsg() const;
+    const char* errmsg() const;
 
     // sqlite3_errcode().
     int errcode() const;
