@@ -24,6 +24,11 @@ public:
     }
     void test()
     {
+        auto parent = test_file_path.parent_path();
+        std::cout << "parent: " << parent << "\n";
+        for (auto& de : fs::directory_iterator(parent)) {
+            std::cout << "entry: " << de << "\n";
+        }
         CHECK(fs::is_regular_file(test_file_path));
     }
     ~UnicodeFilenameHelper()
