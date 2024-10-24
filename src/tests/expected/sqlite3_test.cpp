@@ -5,6 +5,26 @@ namespace fs = std::filesystem;
 #define UNICODE_STRING "test_unicode_ファイル名_𠜎𡃁💻💡.sql"
 #define U8_UNICODE_STRING u8"test_unicode_ファイル名_𠜎𡃁💻💡.sql"
 
+const char k_unicode_string[] = {char(0x74), char(0x65), char(0x73), char(0x74), char(0x5f), char(0x75), char(0x6e),
+                                 char(0x69), char(0x63), char(0x6f), char(0x64), char(0x65), char(0x5f), char(0xe3),
+                                 char(0x83), char(0x95), char(0xe3), char(0x82), char(0xa1), char(0xe3), char(0x82),
+                                 char(0xa4), char(0xe3), char(0x83), char(0xab), char(0xe5), char(0x90), char(0x8d),
+                                 char(0x5f), char(0xf0), char(0xa0), char(0x9c), char(0x8e), char(0xf0), char(0xa1),
+                                 char(0x83), char(0x81), char(0xf0), char(0x9f), char(0x92), char(0xbb), char(0xf0),
+                                 char(0x9f), char(0x92), char(0xa1), char(0x2e), char(0x73), char(0x71), char(0x6c),
+                                 char(0)};
+
+const char8_t k_u8_unicode_string[] = {char8_t(0x74), char8_t(0x65), char8_t(0x73), char8_t(0x74), char8_t(0x5f),
+                                       char8_t(0x75), char8_t(0x6e), char8_t(0x69), char8_t(0x63), char8_t(0x6f),
+                                       char8_t(0x64), char8_t(0x65), char8_t(0x5f), char8_t(0xe3), char8_t(0x83),
+                                       char8_t(0x95), char8_t(0xe3), char8_t(0x82), char8_t(0xa1), char8_t(0xe3),
+                                       char8_t(0x82), char8_t(0xa4), char8_t(0xe3), char8_t(0x83), char8_t(0xab),
+                                       char8_t(0xe5), char8_t(0x90), char8_t(0x8d), char8_t(0x5f), char8_t(0xf0),
+                                       char8_t(0xa0), char8_t(0x9c), char8_t(0x8e), char8_t(0xf0), char8_t(0xa1),
+                                       char8_t(0x83), char8_t(0x81), char8_t(0xf0), char8_t(0x9f), char8_t(0x92),
+                                       char8_t(0xbb), char8_t(0xf0), char8_t(0x9f), char8_t(0x92), char8_t(0xa1),
+                                       char8_t(0x2e), char8_t(0x73), char8_t(0x71), char8_t(0x6c), char8_t(0)};
+
 const fs::path test_dir_name("a_test_dir");
 
 namespace
@@ -67,17 +87,17 @@ public:
 
 TEST(open, utf8_filename_strings_in_hex)
 {
-    print_string_bytes("                            UTF", UNICODE_STRING);
-    print_string_bytes("                         U8_UTF", U8_UNICODE_STRING);
-    fs::path p(UNICODE_STRING);
-    fs::path p8(U8_UNICODE_STRING);
+    print_string_bytes("                            UTF", k_unicode_string);
+    print_string_bytes("                         U8_UTF", k_u8_unicode_string);
+    fs::path p(k_unicode_string);
+    fs::path p8(k_u8_unicode_string);
     print_string_bytes("     path(UTF).string().c_str()", p.string().c_str());
     print_string_bytes("  path(U8_UTF).string().c_str()", p8.string().c_str());
     print_string_bytes("   path(UTF).u8string().c_str()", p.u8string().c_str());
     print_string_bytes("path(U8_UTF).u8string().c_str()", p8.u8string().c_str());
     printf("raw u8 dump: ");
     int count = 0;
-    for (auto* pp = U8_UNICODE_STRING;; ++pp) {
+    for (auto* pp = k_u8_unicode_string;; ++pp) {
         auto c = static_cast<unsigned char>(*pp);
         printf(" %x", c);
         if (c == 0) {
