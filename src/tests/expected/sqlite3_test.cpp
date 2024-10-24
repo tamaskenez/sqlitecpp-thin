@@ -2,13 +2,19 @@
 
 namespace fs = std::filesystem;
 
-#define UNICODE_STRING "test_unicode_ファイル名_𠜎𡃁💻💡.sql"
-#define U8_UNICODE_STRING u8"test_unicode_ファイル名_𠜎𡃁💻💡.sql"
+#if 0
+  #define UNICODE_STRING "test_unicode_ファイル名_𠜎𡃁💻💡.sql"
+  #define U8_UNICODE_STRING u8"test_unicode_ファイル名_𠜎𡃁💻💡.sql"
+#endif
 
 namespace
 {
 using uchar = unsigned char;
 
+const char* k_unicode_string = "test_unicode_ファイル名_𠜎𡃁💻💡.sql";
+const char8_t* k_u8_unicode_string = reinterpret_cast<const char8_t*>(k_unicode_string);
+
+#if 0
 const char k_unicode_string[] = {
   char(uchar(0x74)), char(uchar(0x65)), char(uchar(0x73)), char(uchar(0x74)), char(uchar(0x5f)),
   char(uchar(0x75)), char(uchar(0x6e)), char(uchar(0x69)), char(uchar(0x63)), char(uchar(0x6f)),
@@ -32,6 +38,7 @@ const char8_t k_u8_unicode_string[] = {char8_t(0x74), char8_t(0x65), char8_t(0x7
                                        char8_t(0x83), char8_t(0x81), char8_t(0xf0), char8_t(0x9f), char8_t(0x92),
                                        char8_t(0xbb), char8_t(0xf0), char8_t(0x9f), char8_t(0x92), char8_t(0xa1),
                                        char8_t(0x2e), char8_t(0x73), char8_t(0x71), char8_t(0x6c), char8_t(0)};
+#endif
 
 const fs::path test_dir_name("a_test_dir");
 
@@ -63,7 +70,7 @@ class UnicodeFilenameHelper
 public:
     UnicodeFilenameHelper()
         : pwd(fs::current_path())
-        , test_file_path(pwd / test_dir_name / fs::path(U8_UNICODE_STRING))
+        , test_file_path(pwd / test_dir_name / fs::path(k_u8_unicode_string))
     {
         fs::remove_all(pwd / test_dir_name);
         fs::create_directory(pwd / test_dir_name);
@@ -118,7 +125,7 @@ TEST(open, utf8_filename_ground_truth)
     UnicodeFilenameHelper ufh;
 
     sqlite3* pDb{};
-    ASSERT_EQ(sqlite3_open_v2(UNICODE_STRING, &pDb, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_open_v2(k_unicode_string, &pDb, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr), SQLITE_OK);
     ASSERT_EQ(sqlite3_close(pDb), SQLITE_OK);
     ufh.test();
 }
@@ -127,7 +134,7 @@ TEST(open, utf8_filename_fs_path)
 {
     UnicodeFilenameHelper ufh;
     {
-        ASSERT_TRUE(sqlite::open(fs::path(U8_UNICODE_STRING), SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE));
+        ASSERT_TRUE(sqlite::open(fs::path(k_u8_unicode_string), SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE));
     }
     ufh.test();
 }
