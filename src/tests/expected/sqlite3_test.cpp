@@ -75,6 +75,17 @@ TEST(open, utf8_filename_strings_in_hex)
     print_string_bytes("  path(U8_UTF).string().c_str()", p8.string().c_str());
     print_string_bytes("   path(UTF).u8string().c_str()", p.u8string().c_str());
     print_string_bytes("path(U8_UTF).u8string().c_str()", p8.u8string().c_str());
+    printf("raw u8 dump: ");
+    int count = 0;
+    for (auto* pp = U8_UNICODE_STRING;; ++pp) {
+        auto c = static_cast<unsigned char>(*pp);
+        printf(" %x", c);
+        if (c == 0) {
+            break;
+        }
+        ++count;
+    }
+    printf("\ncount: %d\n", count);
 }
 
 TEST(open, utf8_filename_ground_truth)
