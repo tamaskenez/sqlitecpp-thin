@@ -82,7 +82,7 @@ public:
         auto parent = test_file_path.parent_path();
         std::cout << "parent: " << parent << "\n";
         for (auto& de : fs::directory_iterator(parent)) {
-            print_string_bytes("  string", de.path().filename().string().c_str());
+            // print_string_bytes("  string", de.path().filename().string().c_str());
             print_string_bytes("u8string", de.path().filename().u8string().c_str());
             // std::cout << "entry: " << de.path().filename() << "\n";
         }
@@ -104,7 +104,7 @@ TEST(open, utf8_filename_strings_in_hex)
     fs::path p(k_unicode_string);
     fs::path p8(k_u8_unicode_string);
     print_string_bytes("     path(UTF).string().c_str()", p.string().c_str());
-    print_string_bytes("  path(U8_UTF).string().c_str()", p8.string().c_str());
+    // print_string_bytes("  path(U8_UTF).string().c_str()", p8.string().c_str());
     print_string_bytes("   path(UTF).u8string().c_str()", p.u8string().c_str());
     print_string_bytes("path(U8_UTF).u8string().c_str()", p8.u8string().c_str());
     printf("raw u8 dump: ");
