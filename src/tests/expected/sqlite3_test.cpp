@@ -7,6 +7,29 @@ namespace fs = std::filesystem;
 
 const fs::path test_dir_name("a_test_dir");
 
+namespace
+{
+using uchar = unsigned char;
+void print_string_bytes(const char* title, const char* s)
+{
+    auto l = strlen(s);
+    printf("%s,   size: %zu * char::", title, l);
+    for (size_t i = 0; i < l; ++i) {
+        printf(" %x", uchar(s[i]));
+    }
+    printf("\n");
+}
+
+void print_string_bytes(const char* title, const char8_t* s)
+{
+    auto l = std::u8string(s).size();
+    printf("%s, size: %zu * char8_t:", title, l);
+    for (size_t i = 0; i < l; ++i) {
+        printf(" %x", uchar(s[i]));
+    }
+    printf("\n");
+}
+
 class UnicodeFilenameHelper
 {
     const fs::path pwd;
@@ -27,7 +50,9 @@ public:
         auto parent = test_file_path.parent_path();
         std::cout << "parent: " << parent << "\n";
         for (auto& de : fs::directory_iterator(parent)) {
-            std::cout << "entry: " << de << "\n";
+            print_string_bytes("  string", de.path().filename().string().c_str());
+            print_string_bytes("u8string", de.path().filename().u8string().c_str());
+            // std::cout << "entry: " << de.path().filename() << "\n";
         }
         CHECK(fs::is_regular_file(test_file_path));
     }
@@ -37,6 +62,20 @@ public:
         fs::remove_all(pwd / test_dir_name);
     }
 };
+
+} // namespace
+
+TEST(open, utf8_filename_strings_in_hex)
+{
+    print_string_bytes("                            UTF", UNICODE_STRING);
+    print_string_bytes("                         U8_UTF", U8_UNICODE_STRING);
+    fs::path p(UNICODE_STRING);
+    fs::path p8(U8_UNICODE_STRING);
+    print_string_bytes("     path(UTF).string().c_str()", p.string().c_str());
+    print_string_bytes("  path(U8_UTF).string().c_str()", p8.string().c_str());
+    print_string_bytes("   path(UTF).u8string().c_str()", p.u8string().c_str());
+    print_string_bytes("path(U8_UTF).u8string().c_str()", p8.u8string().c_str());
+}
 
 TEST(open, utf8_filename_ground_truth)
 {
