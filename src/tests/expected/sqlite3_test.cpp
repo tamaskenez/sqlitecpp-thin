@@ -22,7 +22,7 @@ void print_string_bytes(const char* title, const char* s)
 
 void print_string_bytes(const char* title, const char8_t* s)
 {
-    auto l = std::u8string(s).size();
+    auto l = strlen(reinterpret_cast<const char*>(s));
     printf("%s, size: %zu * char8_t:", title, l);
     for (size_t i = 0; i < l; ++i) {
         printf(" %x", uchar(s[i]));
