@@ -21,7 +21,7 @@ jobs:
 
       - name: Build Conan dependencies
         shell: bash
-        run: ./1_build_conan.sh --use-deployer
+        run: ./1_build_conan_deps.sh --use-deployer
 
       - name: Configure
         shell: bash
