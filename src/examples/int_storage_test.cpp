@@ -97,7 +97,7 @@ size_t int_storage_test(const std::vector<AI3>& data, bool use_int64)
             auto stmt = must(db.prepare("SELECT count(1) FROM integers"));
             switch (must(stmt.step())) {
             case sqlite::step_result::row: {
-                [[maybe_unused]] auto count = must(stmt.column_int64(0));
+                [[maybe_unused]] auto count = stmt.column_int64(0);
                 assert(std::cmp_equal(data.size(), count));
             } break;
             case sqlite::step_result::done:
@@ -118,9 +118,9 @@ size_t int_storage_test(const std::vector<AI3>& data, bool use_int64)
             }
             auto stmt = must(db.prepare("SELECT a, b, c FROM integers"));
             while (must(stmt.step()) == sqlite::step_result::row) {
-                auto a = must(stmt.column_int(0));
-                [[maybe_unused]] auto b = must(stmt.column_int(1));
-                [[maybe_unused]] auto c = must(stmt.column_int(2));
+                auto a = stmt.column_int(0);
+                [[maybe_unused]] auto b = stmt.column_int(1);
+                [[maybe_unused]] auto c = stmt.column_int(2);
                 auto it = map.find(a);
                 if (it != map.end()) {
                     assert(it->second.b == b);

@@ -97,12 +97,17 @@ expected<statement, current_error> database::prepare(string_like sql)
     sqlite3_stmt* stmt{};
     RETURN_UNEXPECTED_ON_ERROR(sqlite3_prepare_v2(
       _db,
-      sql.c_str(),
-      sql.size() ? int(*sql.size()) : -1, // Note: zero terminator doesn't need to be included in the size.
+      sql.size() == 0 ? "" : sql.c_str(),
+      sql.size() ? iicast<int>(*sql.size()) : -1, // Note: zero terminator doesn't need to be included in the size.
       &stmt,
       nullptr
     ))
-    return statement(stmt);
+    if (stmt) {
+        return statement(stmt);
+    }
+    // We get here when result of `sqlite3_prepare_v2` was SQLITE_OK but `stmt == nullptr`. It happens when:
+    // "If the input text contains no SQL (if the input is an empty string or a comment) then *ppStmt is set to NULL."
+    return unexpected(current_error(SQLITE_OK, _db));
 }
 
 } // namespace sqlite

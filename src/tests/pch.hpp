@@ -1,7 +1,8 @@
 #pragma once
 
-#include "../sqlitecpp-thin/include/sqlitecpp-thin/sqlite3.hpp"
-#include "gtest/gtest.h"
+#include "sqlitecpp-thin/sqlite3.hpp"
+
+#include <gtest/gtest.h>
 
 #include <filesystem>
 #include <stdexcept>

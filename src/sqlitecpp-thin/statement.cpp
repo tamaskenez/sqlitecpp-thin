@@ -89,31 +89,19 @@ expected<span<const byte>, current_error> statement::column_blob(int col)
     return {};
 }
 
-expected<double, current_error> statement::column_double(int col)
+double statement::column_double(int col)
 {
-    if (auto d = sqlite3_column_double(_stmt, col); d != 0.0) {
-        return d;
-    }
-    RETURN_UNEXPECTED_ON_SQLITE3_ERRCODE
-    return 0.0;
+    return sqlite3_column_double(_stmt, col);
 }
 
-expected<int, current_error> statement::column_int(int col)
+int statement::column_int(int col)
 {
-    if (auto i = sqlite3_column_int(_stmt, col); i != 0) {
-        return i;
-    }
-    RETURN_UNEXPECTED_ON_SQLITE3_ERRCODE
-    return 0;
+    return sqlite3_column_int(_stmt, col);
 }
 
-expected<int64_t, current_error> statement::column_int64(int col)
+int64_t statement::column_int64(int col)
 {
-    if (auto i = sqlite3_column_int64(_stmt, col); i != 0) {
-        return i;
-    }
-    RETURN_UNEXPECTED_ON_SQLITE3_ERRCODE
-    return 0;
+    return sqlite3_column_int64(_stmt, col);
 }
 
 expected<string_view, current_error> statement::column_text(int col)
@@ -132,33 +120,6 @@ expected<optional<span<const byte>>, current_error> statement::column_blob_opt(i
     }
     RETURN_UNEXPECTED_ON_ERROR_OR_NULLOPT_ON_NULL
     return optional(span<const byte>());
-}
-
-expected<optional<double>, current_error> statement::column_double_opt(int col)
-{
-    if (auto d = sqlite3_column_double(_stmt, col); d != 0.0) {
-        return d;
-    }
-    RETURN_UNEXPECTED_ON_ERROR_OR_NULLOPT_ON_NULL
-    return 0.0;
-}
-
-expected<optional<int>, current_error> statement::column_int_opt(int col)
-{
-    if (auto i = sqlite3_column_int(_stmt, col); i != 0) {
-        return i;
-    }
-    RETURN_UNEXPECTED_ON_ERROR_OR_NULLOPT_ON_NULL
-    return 0;
-}
-
-expected<optional<int64_t>, current_error> statement::column_int64_opt(int col)
-{
-    if (auto i = sqlite3_column_int64(_stmt, col); i != 0) {
-        return i;
-    }
-    RETURN_UNEXPECTED_ON_ERROR_OR_NULLOPT_ON_NULL
-    return 0;
 }
 
 expected<optional<string_view>, current_error> statement::column_text_opt(int col)

@@ -1,9 +1,8 @@
 #pragma once
 
-#include "sqlite3.h"
+#include <sqlite3.h>
 
 #include <concepts>
-#include <cstdint>
 #include <expected>
 #include <filesystem>
 #include <functional>
@@ -47,6 +46,11 @@ private:
 
 // String-like function parameter when zero-termination is not needed.
 struct string_like {
+    string_like(std::nullptr_t)
+        : _c_str(nullptr)
+    {
+    }
+
     // This one accepts `const char*`. We need to constrain it with an inline concept otherwise it gets selected for
     // string literals, too.
     string_like(std::same_as<const char*> auto cc)
@@ -283,19 +287,19 @@ public:
     // Normal column getters:
     // Return null-like values (empty blob, 0.0, 0, "") for NULL values.
 
-    // sqlite3_column_blob() and sqlite3_column_bytes64().
+    // sqlite3_column_blob() and sqlite3_column_bytes().
     expected<span<const byte>, current_error> column_blob(int col);
 
     // sqlite3_column_double().
-    expected<double, current_error> column_double(int col);
+    double column_double(int col);
 
     // sqlite3_column_int().
-    expected<int, current_error> column_int(int col);
+    int column_int(int col);
 
     // sqlite3_column_int64().
-    expected<int64_t, current_error> column_int64(int col);
+    int64_t column_int64(int col);
 
-    // sqlite3_column_text() and sqlite3_column_bytes64()
+    // sqlite3_column_text() and sqlite3_column_bytes()
     // The `data()` of the returned value can be used as `const char*` since it's zero-terminated.
     expected<string_view, current_error> column_text(int col);
 
@@ -304,9 +308,6 @@ public:
 
     // Optional column getters: actual NULL is returned as std::nullopt, error as std::unexpected.
     expected<optional<span<const byte>>, current_error> column_blob_opt(int col);
-    expected<optional<double>, current_error> column_double_opt(int col);
-    expected<optional<int>, current_error> column_int_opt(int col);
-    expected<optional<int64_t>, current_error> column_int64_opt(int col);
     expected<optional<string_view>, current_error> column_text_opt(int col);
 
     // sqlite3_reset().
@@ -366,6 +367,9 @@ public:
     [[nodiscard]] int error_offset() const;
 
     // sqlite3_prepare().
+    // Note: if `sql` contains no SQL (if the input is an empty string or a comment), unexpected will be returned
+    // with SQLITE_OK as the error. This is similar to sqlite3_prepare_v2() which returns SQLITE_OK but the statement
+    // pointer is set to NULL.
     expected<statement, current_error> prepare(string_like sql);
 
 private:
