@@ -1,6 +1,6 @@
 #pragma once
 
-#include "sqlitecpp-thin/sqlite3-expected.hpp"
+#include "../sqlitecpp-thin/include/sqlitecpp-thin/sqlite3.hpp"
 #include "gtest/gtest.h"
 
 #include <filesystem>

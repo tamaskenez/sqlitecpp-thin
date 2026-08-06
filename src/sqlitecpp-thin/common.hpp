@@ -1,7 +1,11 @@
 #pragma once
 
-#include "sqlite3.hpp"
+#include "include/sqlitecpp-thin/sqlite3.hpp"
 
+#include <cassert>
+#include <concepts>
+#include <expected>
+#include <optional>
 #include <utility>
 
 #define MOVE(X) std::move(X)
@@ -10,15 +14,14 @@ namespace sqlite
 {
 
 using std::nullopt;
+using std::unexpected;
 
-#if SQLITECPPTHIN_EXPECTED
-  #define RETURN_UNEXPECTED(X) return std::unexpected(X)
-  #define RETURN_VOID \
-      return {}
-#elif SQLITECPPTHIN_EXCEPTION
-  #define RETURN_UNEXPECTED(X) throw(sqlite::exception(X))
-  #define RETURN_VOID return
-#else
-  #error Either SQLITECPPTHIN_EXCEPTION or SQLITECPPTHIN_EXPECTED must be defined to 1.
-#endif
+template<class To, class From>
+    requires std::integral<To> && std::integral<From>
+constexpr To iicast(From f)
+{
+    assert(std::in_range<To>(f));
+    return static_cast<To>(f);
+}
+
 } // namespace sqlite

@@ -1,4 +1,4 @@
-#include "sqlite3.hpp"
+#include "include/sqlitecpp-thin/sqlite3.hpp"
 
 #include "common.hpp"
 
@@ -11,20 +11,6 @@ namespace sqlite
 
 namespace
 {
-template<class... Ts>
-struct overloaded : Ts... {
-    using Ts::operator()...;
-};
-
-template<class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
-
-template<typename... Ts, typename Variant>
-auto switch_variant(Variant&& variant, Ts&&... ts)
-{
-    return std::visit(overloaded{std::forward<Ts>(ts)...}, std::forward<Variant>(variant));
-}
-
 error create_error_for_db(sqlite3* db)
 {
     return error{
@@ -36,30 +22,13 @@ error create_error_for_db(sqlite3* db)
 }
 } // namespace
 
-#if SQLITECPPTHIN_EXCEPTION
-
-exception::exception(error e)
-    : _error(std::move(e))
-    , _what(_error.format())
-{
-}
-
-exception::exception(current_error e)
-    : _error(e.get_error())
-    , _what(_error.format())
-{
-}
-
-#endif
-
 expected<database, error> open(const char* filename, int flags)
 {
     sqlite3* db{};
-    int rc = sqlite3_open_v2(filename, &db, flags, nullptr);
-    if (rc) {
+    if (sqlite3_open_v2(filename, &db, flags, nullptr)) {
         auto e = create_error_for_db(db);
         sqlite3_close_v2(db);
-        RETURN_UNEXPECTED(MOVE(e));
+        return unexpected(MOVE(e));
     }
     return database(db);
 }
@@ -71,7 +40,7 @@ expected<database, error> open(const string& filename, int flags)
 
 expected<database, error> open(const fs::path& filename, int flags)
 {
-    auto u8string = filename.u8string();
+    const auto u8string = filename.u8string();
     return open(reinterpret_cast<const char*>(u8string.c_str()), flags);
 }
 

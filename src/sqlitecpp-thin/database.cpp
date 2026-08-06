@@ -1,10 +1,10 @@
-#include "sqlite3.hpp"
+#include "include/sqlitecpp-thin/sqlite3.hpp"
 
 #include "common.hpp"
 
 #define RETURN_UNEXPECTED_ON_ERROR(X)              \
     if (int rc = (X)) {                            \
-        RETURN_UNEXPECTED(current_error(rc, _db)); \
+        return unexpected(current_error(rc, _db)); \
     }
 
 namespace sqlite
@@ -15,13 +15,13 @@ database::database(sqlite3* db)
 {
 }
 
-database::database(database&& y)
+database::database(database&& y) noexcept
     : _db(y._db)
 {
     y._db = nullptr;
 }
 
-database& database::operator=(database&& y)
+database& database::operator=(database&& y) noexcept
 {
     auto was_this = MOVE(*this);
     std::swap(_db, y._db);
@@ -39,16 +39,17 @@ expected<void, current_error> database::close()
 {
     RETURN_UNEXPECTED_ON_ERROR(sqlite3_close(_db))
     _db = nullptr;
-    RETURN_VOID;
+    return {};
 }
 
 namespace
 {
 int row_callback_caller(void* void_row_callback_ptr, int num_rows, char** column_texts, char** column_names)
 {
-    auto* row_callback_ptr = reinterpret_cast<const database::row_callback_t*>(void_row_callback_ptr);
+    auto* row_callback_ptr = static_cast<const database::row_callback_t*>(void_row_callback_ptr);
     return (*row_callback_ptr)(
-      span<const char* const>(column_texts, size_t(num_rows)), span<const char* const>(column_names, size_t(num_rows))
+      span<const char* const>(column_texts, iicast<size_t>(num_rows)),
+      span<const char* const>(column_names, iicast<size_t>(num_rows))
     );
 }
 } // namespace
@@ -62,7 +63,7 @@ expected<void, current_error> database::exec(string_like_zt sql, const row_callb
       const_cast<row_callback_t*>(&row_callback),
       nullptr
     ))
-    RETURN_VOID;
+    return {};
 }
 
 expected<int, current_error> database::exec_changes(string_like_zt sql)

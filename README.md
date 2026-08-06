@@ -9,7 +9,7 @@ The goal of this wrapper is to expose the SQLite API to C++ in a straightforward
 ## Key features:
 
 - Support for C++ types.
-- C++ error handling patterns: exceptions and `std::expected`
+- Error handling with `std::expected`, no exceptions.
 - RAII on SQLite objects.
 - The wrapper does not try to abstract away the C API: for example, `bind_blob` and `bind_text` remain two separate functions.
 
@@ -19,11 +19,13 @@ The goal of this wrapper is to expose the SQLite API to C++ in a straightforward
 
 ### Error handling
 
-`std::expected` is in many ways superior to exceptions. However, due to the lack of native language support, `std::expected` can be cumbersome to use.
+Every fallible function returns `std::expected<T, E>`, the library never throws.
 
-For this reason, the library is available in two versions — one using `std::expected` and the other using exceptions.
+The error type is `sqlite::current_error` for functions which report the error on an existing database connection. It's a lightweight object which holds the primary error code and the database handle, and reads the remaining error fields (extended error code, message, offset) from the database on demand. That's why it must be processed right away and never stored: a subsequent operation on the same database overwrites those fields. Call `get_error()` to obtain a self-contained `sqlite::error` if you need to keep it.
 
-They are compiled from the very same sources, the `std::expected<T, E>` return types become simply `T` in the exception-throwing version.
+Functions which have no database connection to report on, like `sqlite::open()`, return `sqlite::error` directly.
+
+Both error types have a `format()` function returning a human-readable message.
 
 ### Straightforward mapping to the C API
 

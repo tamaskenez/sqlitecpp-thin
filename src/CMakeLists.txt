@@ -1,6 +1,6 @@
 add_subdirectory(sqlitecpp-thin)
 
-if(BUILD_TESTING)
+if(PROJECT_IS_TOP_LEVEL)
 	add_subdirectory(examples)
 	add_subdirectory(tests)
 endif()

@@ -1,8 +1,8 @@
 [requires]
 
-sqlite3/3.46.1
-gtest/1.15.0
-fmt/11.0.2
+sqlite3/3.53.4
+gtest/1.17.0
 
 [generators]
 CMakeDeps
+CMakeToolchain

@@ -2,44 +2,30 @@ cmake_minimum_required(VERSION 3.25)
 
 project(sqlitecpp-thin)
 
-if(NOT DEFINED CMAKE_FIND_PACKAGE_PREFER_CONFIG)
-	set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)
-endif()
+# Conan 2.x CMakeDeps creates per-config targets (CONAN_LIB::*_RELEASE/_DEBUG) with only
+# IMPORTED_LOCATION_<CONFIG> set. CMake 4.x validates all imported targets at configure
+# time, erroring on missing locations for other configs. Setting CMP0111 OLD turns this
+# back into a warning — Conan's config files select the correct variant at link time.
+cmake_policy(SET CMP0111 OLD)
 
-if(NOT CMAKE_INSTALL_PREFIX)
-	message(WARNING "CMAKE_INSTALL_PREFIX is empty, skipping install.")
-endif()
 set(CMAKE_DEBUG_POSTFIX -debug)
 
 if(PROJECT_IS_TOP_LEVEL)
 	if(NOT CMAKE_PREFIX_PATH)
-		set(CMAKE_PREFIX_PATH "${PROJECT_SOURCE_DIR}/id")
+		set(CMAKE_PREFIX_PATH "${PROJECT_SOURCE_DIR}/_d")
 	endif()
-endif()
-
-if(NOT CMAKE_CXX_STANDARD)
-	set(CMAKE_CXX_STANDARD 23)
-	set(CMAKE_CXX_STANDARD_REQUIRED ON)
-endif()
-
-include(CheckIncludeFileCXX)
-CHECK_INCLUDE_FILE_CXX("expected" HAS_EXPECTED)
-CHECK_INCLUDE_FILE_CXX("format" HAS_FORMAT)
-
-if(NOT HAS_EXPECTED)
-	message(STATUS "The <expected> header not found, std::expected-based error handling is disabled.")
-endif()
-
-if(NOT HAS_FORMAT)
-	message(STATUS "The <format> header not found, using fmt::format instead.")
-	find_package(fmt REQUIRED)
-endif()
-
-if(BUILD_TESTING)
+	if(NOT CMAKE_CXX_STANDARD)
+		set(CMAKE_CXX_STANDARD 23)
+		set(CMAKE_CXX_STANDARD_REQUIRED ON)
+	endif()
 	enable_testing()
-	find_package(GTest REQUIRED)
+	set(CMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE PRE_TEST)
+	find_package(GTest REQUIRED CONFIG)
 endif()
-find_package(SQLite3 REQUIRED)
+
+if(NOT TARGET SQLite3::SQLite3)
+	find_package(SQLite3 REQUIRED CONFIG)
+endif()
 
 include(cmake/warnings_clang.cmake)
 include(cmake/warnings_gcc.cmake)

@@ -1,20 +1,11 @@
-#include "sqlite3.hpp"
+#include "include/sqlitecpp-thin/sqlite3.hpp"
 
 #include <cassert>
-
-#ifdef HAS_FORMAT
-  #include <format>
-#else
-  #include "fmt/core.h"
-#endif
+#include <format>
 
 namespace format
 {
-#ifdef HAS_FORMAT
 using std::format;
-#else
-using fmt::format;
-#endif
 } // namespace format
 
 namespace sqlite
@@ -77,7 +68,7 @@ string error::format() const
         return std::to_string(x);
     };
 
-    auto maybe_offset = [this]() {
+    auto maybe_offset = [this] {
         return error_offset >= 0 ? format::format(" at char {}", error_offset) : string();
     };
 

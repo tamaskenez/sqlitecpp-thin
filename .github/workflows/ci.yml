@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            cmake_generator: -G Xcode
+            platform_label: macos-arm64
+          - os: windows-latest
+            cmake_generator: ""
+            platform_label: win-x64
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Conan
+        uses: conan-io/setup-conan@v1
+
+      - name: Build Conan dependencies
+        shell: bash
+        run: ./1_build_conan.sh --use-deployer
+
+      - name: Configure
+        shell: bash
+        run: |
+          scripts/ci-build-test.sh config Debug
+          scripts/ci-build-test.sh config Release
+
+      - name: Build & Install
+        shell: bash
+        run: |
+          scripts/ci-build-test.sh install Debug
+          scripts/ci-build-test.sh install Release
+
+      - name: Test
+        shell: bash
+        run: |
+          scripts/ci-build-test.sh test Debug
+          scripts/ci-build-test.sh test Release
+
+      - name: Test Installed
+        shell: bash
+        run: |
+          scripts/ci-build-test.sh test-installed Debug
+          scripts/ci-build-test.sh test-installed Release

@@ -1,4 +1,4 @@
-TEST(expected_error, failing_nonvoid_function_with_error)
+TEST(error, failing_nonvoid_function_with_error)
 {
     for (bool fail : {false, true}) {
         auto db =
@@ -17,7 +17,7 @@ TEST(expected_error, failing_nonvoid_function_with_error)
     }
 }
 
-TEST(expected_error, failing_nonvoid_function_with_current_error)
+TEST(error, failing_nonvoid_function_with_current_error)
 {
     const char* badSql = "SELECT * FROM foo FROM";
     for (bool fail : {false, true}) {
@@ -46,7 +46,7 @@ TEST(expected_error, failing_nonvoid_function_with_current_error)
     }
 }
 
-TEST(expected_error, failing_void_function_with_current_error)
+TEST(error, failing_void_function_with_current_error)
 {
     const char* badSql = "CREATE TABLE IF NOT EXISTS foo a INTEGER";
     for (bool fail : {false, true}) {

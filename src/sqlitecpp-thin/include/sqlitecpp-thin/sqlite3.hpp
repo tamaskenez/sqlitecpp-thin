@@ -4,12 +4,7 @@
 
 #include <concepts>
 #include <cstdint>
-#if defined SQLITECPPTHIN_EXCEPTION && SQLITECPPTHIN_EXCEPTION
-  #include <exception>
-#endif
-#if defined SQLITECPPTHIN_EXPECTED && SQLITECPPTHIN_EXPECTED
-  #include <expected>
-#endif
+#include <expected>
 #include <filesystem>
 #include <functional>
 #include <optional>
@@ -22,24 +17,13 @@ namespace sqlite
 
 // Reduce syntactic noise.
 using std::byte;
+using std::expected;
 using std::function;
 using std::optional;
 using std::span;
 using std::string;
 using std::string_view;
 namespace fs = std::filesystem;
-
-#if defined SQLITECPPTHIN_EXPECTED && SQLITECPPTHIN_EXPECTED
-template<class T, class E>
-using expected = std::expected<T, E>;
-  #define SQLITECPPTHIN_NODISCARD [[nodiscard]]
-#elif defined SQLITECPPTHIN_EXCEPTION && SQLITECPPTHIN_EXCEPTION
-template<class T, class E>
-using expected = T;
-  #define SQLITECPPTHIN_NODISCARD
-#else
-  #error Include "sqlitecpp-thin/sqlite3-expected.hpp" or "sqlitecpp-thin/sqlite3-exception.hpp" instead.
-#endif
 
 // String-like, zero terminated function parameter.
 struct string_like_zt {
@@ -52,7 +36,7 @@ struct string_like_zt {
     {
     }
 
-    const char* c_str() const
+    [[nodiscard]] const char* c_str() const
     {
         return _c_str;
     }
@@ -89,12 +73,12 @@ struct string_like {
     {
     }
 
-    const char* c_str() const
+    [[nodiscard]] const char* c_str() const
     {
         return _c_str;
     }
 
-    const optional<size_t>& size() const
+    [[nodiscard]] const optional<size_t>& size() const
     {
         return _size;
     }
@@ -112,7 +96,7 @@ struct error {
     string errmsg;
     int error_offset = -1;
 
-    string format() const;
+    [[nodiscard]] string format() const;
 };
 
 // `current_error` stores only the primary error code and the database handle.
@@ -125,44 +109,19 @@ public:
     current_error(int errcode, sqlite3* db);
     explicit current_error(sqlite3* db);
 
-    int errcode() const;
-    int extended_errcode() const;
-    const char* errmsg() const;
-    int error_offset() const;
+    [[nodiscard]] int errcode() const;
+    [[nodiscard]] int extended_errcode() const;
+    [[nodiscard]] const char* errmsg() const;
+    [[nodiscard]] int error_offset() const;
 
-    error get_error() const;
+    [[nodiscard]] error get_error() const;
 
-    string format() const;
+    [[nodiscard]] string format() const;
 
 private:
     int _errcode = SQLITE_OK;
     sqlite3* _db = nullptr;
 };
-
-#if defined SQLITECPPTHIN_EXCEPTION && SQLITECPPTHIN_EXCEPTION
-class exception final : public std::exception
-{
-public:
-    explicit exception(error e);
-    explicit exception(current_error e);
-
-    const char* what() const noexcept override
-    {
-        return _what.c_str();
-    }
-
-    const error& get_error() const
-    {
-        return _error;
-    }
-
-private:
-    // We can't store the more lightweight `current_error` since the stack unwinding can destruct the database and
-    // `current_error` needs it.
-    sqlite::error _error;
-    std::string _what;
-};
-#endif
 
 enum class step_result {
     row = SQLITE_ROW,
@@ -187,14 +146,14 @@ public:
 
     // `statement` is move-only
     statement(const statement&) = delete;
-    statement(statement&& y);
+    statement(statement&& y) noexcept;
     statement& operator=(const statement&) = delete;
-    statement& operator=(statement&& y);
+    statement& operator=(statement&& y) noexcept;
 
     // sqlite3_finalize().
     ~statement();
 
-    sqlite3_stmt* handle() const
+    [[nodiscard]] sqlite3_stmt* handle() const
     {
         return _stmt;
     }
@@ -209,49 +168,49 @@ public:
     // returning, which corresponds to the `SQLITE_TRANSIENT` flag on the C interface.
     //
     // Note that while `bind_blob(int, string&&)` and `bind_text(int, string&&)` are deleted, in C++ it's still easier
-    // to accidentaly provide a temporary object to these functions then it is in C. For example:
+    // to accidentally provide a temporary object to these functions then it is in C. For example:
     //
     //     stmt.bind_text(0, std::string_view(produce_some_string(...))); # Compiles OK but use-after-free!!!
     //
 
     // sqlite3_bind_blob().
-    SQLITECPPTHIN_NODISCARD expected<void, current_error>
+    [[nodiscard]] expected<void, current_error>
     bind_blob(int index, const void* ptr, int size, void (*deleter)(void*) = SQLITE_STATIC);
 
     // sqlite3_bind_blob64().
-    SQLITECPPTHIN_NODISCARD expected<void, current_error>
+    [[nodiscard]] expected<void, current_error>
     bind_blob(int index, const void* ptr, size_t size, void (*deleter)(void*) = SQLITE_STATIC);
 
     // sqlite3_bind_blob(..., SQLITE3_TRANSIENT).
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_blob_copy(int index, const void* ptr, int size);
+    [[nodiscard]] expected<void, current_error> bind_blob_copy(int index, const void* ptr, int size);
 
     // sqlite3_bind_blob64(..., SQLITE3_TRANSIENT).
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_blob_copy(int index, const void* ptr, size_t size);
+    [[nodiscard]] expected<void, current_error> bind_blob_copy(int index, const void* ptr, size_t size);
 
     // C++ - style bind_blob functions
     // WARNING: unlike `sqlite3_bind_blob()`: empty `span` or `string_view` bind an empty blob and never a NULL value,
     // even if `data() == nullptr`!
 
     // sqlite3_bind_blob64(..., SQLITE3_STATIC).
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_blob(int index, span<const std::byte> bytes);
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_blob(int index, string_view sv);
+    [[nodiscard]] expected<void, current_error> bind_blob(int index, span<const std::byte> bytes);
+    [[nodiscard]] expected<void, current_error> bind_blob(int index, string_view sv);
 
     // sqlite3_bind_blob64(..., SQLITE3_TRANSIENT).
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_blob_copy(int index, span<const std::byte> bytes);
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_blob_copy(int index, string_view sv);
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_blob_copy(int index, string&& s);
+    [[nodiscard]] expected<void, current_error> bind_blob_copy(int index, span<const std::byte> bytes);
+    [[nodiscard]] expected<void, current_error> bind_blob_copy(int index, string_view sv);
+    [[nodiscard]] expected<void, current_error> bind_blob_copy(int index, string&& s);
 
     // Remove the `string&&` overload: temporary strings must always be copied.
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_blob(int index, string&& s) = delete;
+    [[nodiscard]] expected<void, current_error> bind_blob(int index, string&& s) = delete;
 
     // sqlite3_bind_double().
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_double(int index, double d);
+    [[nodiscard]] expected<void, current_error> bind_double(int index, double d);
 
     // sqlite3_bind_int().
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_int(int index, int i);
+    [[nodiscard]] expected<void, current_error> bind_int(int index, int i);
 
     // sqlite3_bind_int64().
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_int(int index, int64_t i);
+    [[nodiscard]] expected<void, current_error> bind_int(int index, int64_t i);
 
     // Accept all integers which can safely be converted to `int` (and exclude `int` itself)
     template<class T>
@@ -259,9 +218,9 @@ public:
           !std::same_as<T, int>
           && ((std::signed_integral<T> && sizeof(T) <= sizeof(int)) || (std::unsigned_integral<T> && sizeof(T) + 1 <= sizeof(int)))
         )
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_int(int index, T i)
+    [[nodiscard]] expected<void, current_error> bind_int(int index, T i)
     {
-        return bind_int(index, int(i));
+        return bind_int(index, static_cast<int>(i));
     }
 
     // Accept all integers which can safely be converted to `int64_t` (and exclude `int64_t` itself)
@@ -270,54 +229,54 @@ public:
           !std::same_as<T, int64_t>
           && ((std::signed_integral<T> && sizeof(T) <= sizeof(int64_t)) || (std::unsigned_integral<T> && sizeof(T) + 1 <= sizeof(int64_t)))
         )
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_int(int index, T i)
+    [[nodiscard]] expected<void, current_error> bind_int(int index, T i)
     {
-        return bind_int(index, int64_t(i));
+        return bind_int(index, static_cast<int64_t>(i));
     }
 
     // sqlite3_bind_null().
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_null(int index);
+    [[nodiscard]] expected<void, current_error> bind_null(int index);
 
     // bind_text functions: please note that "The result of expressions involving strings with embedded NULs is
     // undefined."
 
     // sqlite3_bind_text().
-    SQLITECPPTHIN_NODISCARD expected<void, current_error>
+    [[nodiscard]] expected<void, current_error>
     bind_text(int index, const char* ptr, int size, void (*deleter)(void*) = SQLITE_STATIC);
 
     // sqlite3_bind_text64().
-    SQLITECPPTHIN_NODISCARD expected<void, current_error>
+    [[nodiscard]] expected<void, current_error>
     bind_text(int index, const char* ptr, size_t size, void (*deleter)(void*) = SQLITE_STATIC);
 
     // sqlite3_bind_text(..., SQLITE_TRANSIENT).
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_text_copy(int index, const char* ptr, int size);
+    [[nodiscard]] expected<void, current_error> bind_text_copy(int index, const char* ptr, int size);
 
     // sqlite3_bind_text64(..., SQLITE_TRANSIENT).
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_text_copy(int index, const char* ptr, size_t size);
+    [[nodiscard]] expected<void, current_error> bind_text_copy(int index, const char* ptr, size_t size);
 
     // C-style bind_text functions for zero-terminated c-strings.
-    SQLITECPPTHIN_NODISCARD expected<void, current_error>
+    [[nodiscard]] expected<void, current_error>
     bind_text(int index, const char* ptr, void (*deleter)(void*) = SQLITE_STATIC);
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_text_copy(int index, const char* ptr);
+    [[nodiscard]] expected<void, current_error> bind_text_copy(int index, const char* ptr);
 
     // C++ - style bind_text functions.
     // WARNING: unlike `sqlite3_bind_text()`: empty `string` or `string_view` bind an empty text and never a NULL value,
     // even if `data() == nullptr`!
 
     // sqlite3_bind_text64(..., SQL_STATIC).
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_text(int index, string_view sv);
+    [[nodiscard]] expected<void, current_error> bind_text(int index, string_view sv);
     // sqlite3_bind_text64(..., SQL_TRANSIENT).
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_text_copy(int index, string_view sv);
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_text_copy(int index, string&& s);
+    [[nodiscard]] expected<void, current_error> bind_text_copy(int index, string_view sv);
+    [[nodiscard]] expected<void, current_error> bind_text_copy(int index, string&& s);
 
     // Remove the `string&&` overload: temporary strings must always be copied.
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_text(int index, string&& s) = delete;
+    [[nodiscard]] expected<void, current_error> bind_text(int index, string&& s) = delete;
 
     // sqlite3_bind_zeroblob().
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_zeroblob(int index, int size);
+    [[nodiscard]] expected<void, current_error> bind_zeroblob(int index, int size);
 
     // sqlite3_bind_zeroblob64().
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> bind_zeroblob(int index, size_t size);
+    [[nodiscard]] expected<void, current_error> bind_zeroblob(int index, size_t size);
 
     expected<step_result, current_error> step();
 
@@ -328,7 +287,7 @@ public:
     expected<span<const byte>, current_error> column_blob(int col);
 
     // sqlite3_column_double().
-    expected<double, current_error> column_double(sqlite3_stmt*, int col);
+    expected<double, current_error> column_double(int col);
 
     // sqlite3_column_int().
     expected<int, current_error> column_int(int col);
@@ -345,7 +304,7 @@ public:
 
     // Optional column getters: actual NULL is returned as std::nullopt, error as std::unexpected.
     expected<optional<span<const byte>>, current_error> column_blob_opt(int col);
-    expected<optional<double>, current_error> column_double_opt(sqlite3_stmt*, int col);
+    expected<optional<double>, current_error> column_double_opt(int col);
     expected<optional<int>, current_error> column_int_opt(int col);
     expected<optional<int64_t>, current_error> column_int64_opt(int col);
     expected<optional<string_view>, current_error> column_text_opt(int col);
@@ -354,7 +313,7 @@ public:
     expected<void, current_error> reset();
 
     // sqlite3_db_handle().
-    sqlite3* db_handle() const;
+    [[nodiscard]] sqlite3* db_handle() const;
 
     // Convenience compound functions:
 
@@ -372,40 +331,39 @@ public:
 
     // `database` is move-only.
     database(const database&) = delete;
-    database(database&& y);
+    database(database&& y) noexcept;
     database& operator=(const database&) = delete;
-    database& operator=(database&& y);
+    database& operator=(database&& y) noexcept;
 
     // Force-close the underlying database using sqlite3_close_v2().
     ~database();
 
-    sqlite3* handle() const
+    [[nodiscard]] sqlite3* handle() const
     {
         return _db;
     }
 
     // Call sqlite_close() which returns a result code. On error, the database is not closed.
-    SQLITECPPTHIN_NODISCARD expected<void, current_error> close();
+    [[nodiscard]] expected<void, current_error> close();
 
     // sqlite3_exec().
     using row_callback_t = function<int(span<const char* const> column_texts, span<const char* const> column_names)>;
-    SQLITECPPTHIN_NODISCARD expected<void, current_error>
-    exec(string_like_zt sql, const row_callback_t& row_callback = {});
+    [[nodiscard]] expected<void, current_error> exec(string_like_zt sql, const row_callback_t& row_callback = {});
 
     // sqlite3_exec(), then return sqlite3_changes().
     [[nodiscard]] expected<int, current_error> exec_changes(string_like_zt sql);
 
     // sqlite3_errmsg().
-    const char* errmsg() const;
+    [[nodiscard]] const char* errmsg() const;
 
     // sqlite3_errcode().
-    int errcode() const;
+    [[nodiscard]] int errcode() const;
 
     // sqlite3_extended_errcode().
-    int extended_errcode() const;
+    [[nodiscard]] int extended_errcode() const;
 
     // sqlite3_offset().
-    int error_offset() const;
+    [[nodiscard]] int error_offset() const;
 
     // sqlite3_prepare().
     expected<statement, current_error> prepare(string_like sql);

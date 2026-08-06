@@ -1,4 +1,5 @@
-#include "sqlite3cpp-thin/sqlite3-expected.hpp"
+#include "../src/sqlitecpp-thin/include/sqlitecpp-thin/sqlite3.hpp"
+
 #include <cstdlib>
 
 int main()
@@ -7,7 +8,7 @@ int main()
     if (!db) {
         return EXIT_FAILURE;
     }
-    auto closed = db.close();
+    auto closed = db->close();
     if (!closed) {
         return EXIT_FAILURE;
     }
