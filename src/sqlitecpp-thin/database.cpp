@@ -31,7 +31,20 @@ database& database::operator=(database&& y) noexcept
 database::~database()
 {
     if (_db) {
-        sqlite3_close_v2(_db);
+        if (const auto rc = sqlite3_close(_db); rc != SQLITE_OK) {
+            assert(false); // Probable reason: "If the database connection is associated with unfinalized prepared
+                           // statements, BLOB handlers, and/or unfinished sqlite3_backup objects then sqlite3_close()
+                           // will leave the database connection open and return SQLITE_BUSY."
+
+            // Fallback:
+            //
+            // If sqlite3_close_v2() is called with unfinalized prepared statements, unclosed BLOB handlers, and/or
+            // unfinished sqlite3_backups, it returns SQLITE_OK regardless, but instead of deallocating the database
+            // connection immediately, it marks the database connection as an unusable "zombie" and makes arrangements
+            // to automatically deallocate the database connection after all prepared statements are finalized, all BLOB
+            // handles are closed, and all backups have finished.
+            sqlite3_close_v2(_db);
+        }
     }
 }
 
@@ -44,12 +57,14 @@ expected<void, current_error> database::close()
 
 namespace
 {
-int row_callback_caller(void* void_row_callback_ptr, int num_rows, char** column_texts, char** column_names)
+int row_callback_caller(void* void_row_callback_ptr, int num_columns, char** column_texts, char** column_names)
 {
     auto* row_callback_ptr = static_cast<const database::row_callback_t*>(void_row_callback_ptr);
+    const auto nc = iicast<size_t>(num_columns);
     return (*row_callback_ptr)(
-      span<const char* const>(column_texts, iicast<size_t>(num_rows)),
-      span<const char* const>(column_names, iicast<size_t>(num_rows))
+      // The (deprecated) `PRAGMA empty_result_callbacks` allows `column_texts` to be nullptr.
+      column_texts ? span<const char* const>(column_texts, nc) : span<const char* const>(),
+      span<const char* const>(column_names, nc)
     );
 }
 } // namespace
@@ -66,7 +81,7 @@ expected<void, current_error> database::exec(string_like_zt sql, const row_callb
     return {};
 }
 
-expected<int, current_error> database::exec_changes(string_like_zt sql)
+expected<int, current_error> database::exec_then_changes(string_like_zt sql)
 {
     RETURN_UNEXPECTED_ON_ERROR(sqlite3_exec(_db, sql.c_str(), nullptr, nullptr, nullptr))
     return sqlite3_changes(_db);
@@ -92,7 +107,7 @@ int database::error_offset() const
     return sqlite3_error_offset(_db);
 }
 
-expected<statement, current_error> database::prepare(string_like sql)
+expected<statement, current_error> database::prepare_v2(string_like sql)
 {
     sqlite3_stmt* stmt{};
     RETURN_UNEXPECTED_ON_ERROR(sqlite3_prepare_v2(
@@ -107,7 +122,7 @@ expected<statement, current_error> database::prepare(string_like sql)
     }
     // We get here when result of `sqlite3_prepare_v2` was SQLITE_OK but `stmt == nullptr`. It happens when:
     // "If the input text contains no SQL (if the input is an empty string or a comment) then *ppStmt is set to NULL."
-    return unexpected(current_error(SQLITE_OK, _db));
+    return unexpected(current_error(SQLITE_OK, nullptr));
 }
 
 } // namespace sqlite

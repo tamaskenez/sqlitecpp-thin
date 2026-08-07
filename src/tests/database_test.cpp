@@ -17,7 +17,7 @@ TEST(database, prepare_query_text_modes)
         ASSERT_TRUE(db.exec("INSERT INTO foo(a) VALUES(222)"));
 
         const std::string query = "SELECT count(1) FROM foo WHERE a = 22";
-        auto stmt = (with_size ? db.prepare(query) : db.prepare(query.c_str())).value();
+        auto stmt = (with_size ? db.prepare_v2(query) : db.prepare_v2(query.c_str())).value();
 
         ASSERT_EQ(stmt.step(), sqlite::step_result::row);
         ASSERT_EQ(stmt.column_int(0), 3);
@@ -80,5 +80,5 @@ TEST(database, exec_changes)
     ASSERT_TRUE(db.exec("INSERT INTO foo(a) VALUES(222)"));
     ASSERT_TRUE(db.exec("INSERT INTO foo(a) VALUES(222)"));
 
-    ASSERT_EQ(db.exec_changes("DELETE FROM foo WHERE a = 22"), 3);
+    ASSERT_EQ(db.exec_then_changes("DELETE FROM foo WHERE a = 22"), 3);
 }

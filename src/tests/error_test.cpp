@@ -23,7 +23,7 @@ TEST(error, failing_nonvoid_function_with_current_error)
     for (bool fail : {false, true}) {
         auto db = sqlite::open(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE).value();
         ASSERT_TRUE(db.exec("CREATE TABLE IF NOT EXISTS foo (a INTEGER)"));
-        auto stmt = db.prepare(fail ? badSql : "SELECT * FROM foo");
+        auto stmt = db.prepare_v2(fail ? badSql : "SELECT * FROM foo");
         ASSERT_EQ(stmt.has_value(), !fail);
         if (!stmt) {
             auto* pdb = db.handle();

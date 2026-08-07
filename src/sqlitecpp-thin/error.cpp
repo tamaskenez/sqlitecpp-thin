@@ -12,46 +12,53 @@ namespace sqlite
 {
 current_error::current_error(int errcode, sqlite3* db)
     : _errcode(errcode)
-    , _db(db)
-{
-}
-
-current_error::current_error(sqlite3* db)
-    : _errcode(sqlite3_errcode(db))
-    , _db(db)
+    // Not all errors are set on the database, for example SQLITE_MISUSE sometimes isn't.
+    // Indicate it by not storing db.
+    // Note: rare corner case not handled: for example, an SQLITE_MISUSE is already set on the database while
+    // encountering a second SQLITE_MISUSE which is not set on the database. We will mistakenly store the db for the
+    // second SQLITE_MISUSE, too.
+    , _db(db && sqlite3_errcode(db) == errcode ? db : nullptr)
 {
 }
 
 int current_error::errcode() const
 {
-    assert(_errcode == SQLITE_MISUSE || _errcode == sqlite3_errcode(_db));
+    assert(
+      !_db || _errcode == sqlite3_errcode(_db)
+    ); // Probable reason: another operation was performed on the database after this current_error was obtained.
     return _errcode;
 }
 
 int current_error::extended_errcode() const
 {
-    if (_errcode == sqlite3_errcode(_db)) {
+    if (_db) {
+        assert(
+          _errcode == sqlite3_errcode(_db)
+        ); // Probable reason: another operation was performed on the database after this current_error was obtained.
         return sqlite3_extended_errcode(_db);
     }
-    assert(_errcode == SQLITE_MISUSE);
     return _errcode;
 }
 
 const char* current_error::errmsg() const
 {
-    if (_errcode == sqlite3_errcode(_db)) {
+    if (_db) {
+        assert(
+          _errcode == sqlite3_errcode(_db)
+        ); // Probable reason: another operation was performed on the database after this current_error was obtained.
         return sqlite3_errmsg(_db);
     }
-    assert(_errcode == SQLITE_MISUSE);
     return nullptr;
 }
 
 int current_error::error_offset() const
 {
-    if (_errcode == sqlite3_errcode(_db)) {
+    if (_db) {
+        assert(
+          _errcode == sqlite3_errcode(_db)
+        ); // Probable reason: another operation was performed on the database after this current_error was obtained.
         return sqlite3_error_offset(_db);
     }
-    assert(_errcode == SQLITE_MISUSE);
     return -1;
 }
 

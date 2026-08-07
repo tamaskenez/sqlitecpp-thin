@@ -28,7 +28,7 @@ sqlite::database make_db()
 
 sqlite::statement select_row(sqlite::database& db, int id)
 {
-    auto stmt = db.prepare("SELECT i, i64, d, s, b FROM t WHERE id = " + std::to_string(id)).value();
+    auto stmt = db.prepare_v2("SELECT i, i64, d, s, b FROM t WHERE id = " + std::to_string(id)).value();
     EXPECT_EQ(stmt.step(), sqlite::step_result::row);
     return stmt;
 }
@@ -37,7 +37,7 @@ sqlite::statement select_row(sqlite::database& db, int id)
 // failing call on the same connection between step() and the column reads will do.
 void poison_connection_errcode(sqlite::database& db)
 {
-    EXPECT_FALSE(db.prepare("SELECT * FROM no_such_table"));
+    EXPECT_FALSE(db.prepare_v2("SELECT * FROM no_such_table"));
     EXPECT_EQ(db.errcode(), SQLITE_ERROR);
 }
 
@@ -77,7 +77,7 @@ TEST(regression, column_getter_false_error_after_out_of_range_index)
 // getters, 0.0 for column_double(), and a null blob pointer for x''. column_text() escapes on this
 // row only because SQLite hands back a non-null pointer for an empty string - it falls into the
 // same trap when the value is a real NULL.
-TEST(regression, DISABLED_column_getters_survive_poisoned_errcode)
+TEST(regression, column_getters_survive_poisoned_errcode)
 {
     auto db = make_db();
     auto stmt = select_row(db, 0);
@@ -104,9 +104,15 @@ TEST(regression, optional_column_getters_survive_poisoned_errcode)
 
     poison_connection_errcode(db);
 
+    auto i = stmt.column_int_opt(0);
+    auto i64 = stmt.column_int64_opt(1);
+    auto d = stmt.column_double_opt(2);
     auto s = stmt.column_text_opt(3);
     auto b = stmt.column_blob_opt(4);
 
+    EXPECT_TRUE(i.has_value() && *i == 0);
+    EXPECT_TRUE(i64.has_value() && *i64 == 0);
+    EXPECT_TRUE(d.has_value() && *d == 0.0);
     EXPECT_TRUE(s.has_value() && s->has_value() && (*s)->empty());
     EXPECT_TRUE(b.has_value() && b->has_value() && (*b)->empty());
 }
@@ -145,12 +151,21 @@ TEST(regression, optional_column_getters_read_back_zero_and_empty_values)
     auto db = make_db();
     auto stmt = select_row(db, 0); // zero-like but not NULL
 
+    auto i = stmt.column_int_opt(0);
+    auto i64 = stmt.column_int64_opt(1);
+    auto d = stmt.column_double_opt(2);
     auto s = stmt.column_text_opt(3);
     auto b = stmt.column_blob_opt(4);
 
+    ASSERT_TRUE(i.has_value());
+    ASSERT_TRUE(i64.has_value());
+    ASSERT_TRUE(d.has_value());
     ASSERT_TRUE(s.has_value());
     ASSERT_TRUE(b.has_value());
 
+    ASSERT_EQ(*i, 0);
+    ASSERT_EQ(*i64, 0);
+    ASSERT_EQ(*d, 0.0);
     ASSERT_TRUE(s->has_value());
     ASSERT_TRUE(b->has_value());
 
@@ -183,12 +198,21 @@ TEST(regression, optional_column_getters_return_nullopt_for_null)
     auto db = make_db();
     auto stmt = select_row(db, 1); // all NULL
 
+    auto i = stmt.column_int_opt(0);
+    auto i64 = stmt.column_int64_opt(1);
+    auto d = stmt.column_double_opt(2);
     auto s = stmt.column_text_opt(3);
     auto b = stmt.column_blob_opt(4);
 
+    ASSERT_TRUE(i.has_value());
+    ASSERT_TRUE(i64.has_value());
+    ASSERT_TRUE(d.has_value());
     ASSERT_TRUE(s.has_value());
     ASSERT_TRUE(b.has_value());
 
+    EXPECT_FALSE(i->has_value());
+    EXPECT_FALSE(i64->has_value());
+    EXPECT_FALSE(d->has_value());
     EXPECT_FALSE(s->has_value()) << "SQL NULL was reported as the value \"" << **s << "\"";
     EXPECT_FALSE(b->has_value()) << "SQL NULL was reported as a blob of " << (*b)->size() << " bytes";
 }
@@ -206,7 +230,7 @@ TEST(regression, prepare_of_statementless_sql)
 {
     auto db = make_db();
     for (const char* sql : {"", "   ", "\n\t ", ";", ";;", "-- just a comment"}) {
-        auto stmt = db.prepare(sql);
+        auto stmt = db.prepare_v2(sql);
         if (stmt) {
             EXPECT_NE(stmt->handle(), nullptr)
               << "prepare(\"" << sql << "\") reported success but the statement handle is null";
@@ -223,7 +247,7 @@ TEST(regression, prepare_of_statementless_sql)
 TEST(regression, prepare_of_empty_string_view)
 {
     auto db = make_db();
-    auto stmt = db.prepare(std::string_view{});
+    auto stmt = db.prepare_v2(std::string_view{});
     ASSERT_FALSE(stmt);
     ASSERT_EQ(stmt.error().errcode(), SQLITE_OK);
 }
@@ -232,13 +256,13 @@ TEST(regression, prepare_of_nullptr_string)
 {
     auto db = make_db();
     {
-        auto stmt = db.prepare(nullptr);
+        auto stmt = db.prepare_v2(nullptr);
         ASSERT_FALSE(stmt);
         ASSERT_EQ(stmt.error().errcode(), SQLITE_MISUSE);
     }
     {
         const char* nullptr_str = nullptr;
-        auto stmt = db.prepare(nullptr_str);
+        auto stmt = db.prepare_v2(nullptr_str);
         ASSERT_FALSE(stmt);
         ASSERT_EQ(stmt.error().errcode(), SQLITE_MISUSE);
     }
@@ -246,13 +270,54 @@ TEST(regression, prepare_of_nullptr_string)
 
 // --- error formatting -----------------------------------------------------------------------
 
-// error::format() has a fallback path for sqlite3_errstr() returning nullptr. sqlite3_errstr() never
-// returns nullptr though - it answers "unknown error" for anything it doesn't recognise - so that
-// fallback in error.cpp is unreachable. errcode_macro_name() is the one that does return nullptr.
-TEST(regression, sqlite3_errstr_never_returns_null)
+// sqlite3_errstr() is documented to return NULL for a result code that has no text message
+// available, and its message table really does hold NULL entries: SQLITE_INTERNAL, SQLITE_EMPTY,
+// SQLITE_FORMAT and - unless SQLITE_DISABLE_LFS - SQLITE_NOLFS. The amalgamation currently
+// substitutes a fallback "unknown error" for those, so in practice no NULL escapes, but that is an
+// implementation detail rather than the contract and the library links against whatever SQLite the
+// consumer has. error::format() is right to handle NULL, and this test deliberately asserts nothing
+// about which of its branches runs.
+//
+// What it does pin down is error::format()'s own contract: a non-empty string carrying the message,
+// for any result code - including the ones with no message available, and values that are not
+// result codes at all.
+TEST(regression, error_format_handles_codes_without_a_message)
 {
-    for (int rc : {SQLITE_OK, SQLITE_ERROR, SQLITE_CONSTRAINT_NOTNULL, -12345, 999999}) {
-        EXPECT_NE(sqlite3_errstr(rc), nullptr) << "errcode " << rc;
+    for (int rc :
+         {SQLITE_OK,
+          SQLITE_ERROR,
+          SQLITE_INTERNAL,
+          SQLITE_EMPTY,
+          SQLITE_FORMAT,
+          SQLITE_NOLFS,
+          SQLITE_CONSTRAINT_NOTNULL,
+          -12345,
+          999999}) {
+        const sqlite::error e{.errcode = rc, .extended_errcode = rc, .errmsg = "the message", .error_offset = -1};
+        const auto s = e.format();
+        EXPECT_FALSE(s.empty()) << "errcode " << rc;
+        EXPECT_NE(s.find("the message"), std::string::npos) << "errcode " << rc << ": " << s;
     }
+}
+
+TEST(regression, error_format_renders_the_offset)
+{
+    const sqlite::error with_offset{
+      .errcode = SQLITE_ERROR, .extended_errcode = SQLITE_ERROR, .errmsg = "the message", .error_offset = 7
+    };
+    EXPECT_NE(with_offset.format().find("at char 7"), std::string::npos) << with_offset.format();
+
+    const sqlite::error without_offset{
+      .errcode = SQLITE_ERROR, .extended_errcode = SQLITE_ERROR, .errmsg = "the message", .error_offset = -1
+    };
+    EXPECT_EQ(without_offset.format().find("at char"), std::string::npos) << without_offset.format();
+}
+
+// errcode_macro_name() is the lookup that really is documented to answer nullptr, and format() has
+// to cope with that too.
+TEST(regression, errcode_macro_name_returns_null_for_unknown_codes)
+{
     EXPECT_EQ(sqlite::errcode_macro_name(-12345), nullptr);
+    EXPECT_EQ(sqlite::errcode_macro_name(999999), nullptr);
+    EXPECT_STREQ(sqlite::errcode_macro_name(SQLITE_ERROR), "SQLITE_ERROR");
 }

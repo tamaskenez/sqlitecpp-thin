@@ -67,7 +67,7 @@ expected<step_result, current_error> statement::step()
     }
 }
 
-expected<int, current_error> statement::step_done_changes()
+expected<int, current_error> statement::step_expect_done_then_changes()
 {
     const auto sr = step();
     if (!sr) {
@@ -75,7 +75,7 @@ expected<int, current_error> statement::step_done_changes()
     }
     if (*sr != step_result::done) {
         // Report SQLITE_ROW as error.
-        return unexpected(current_error(db_handle()));
+        return unexpected(current_error(static_cast<int>(*sr), nullptr));
     }
     return sqlite3_changes(db_handle());
 }
@@ -85,7 +85,9 @@ expected<span<const byte>, current_error> statement::column_blob(int col)
     if (auto* p = sqlite3_column_blob(_stmt, col)) {
         return span(static_cast<const byte*>(p), iicast<size_t>(sqlite3_column_bytes(_stmt, col)));
     }
-    RETURN_UNEXPECTED_ON_SQLITE3_ERRCODE
+    if (auto* db = db_handle(); sqlite3_errcode(db) == SQLITE_NOMEM) {
+        return unexpected(current_error(SQLITE_NOMEM, db));
+    }
     return {};
 }
 
@@ -109,26 +111,89 @@ expected<string_view, current_error> statement::column_text(int col)
     if (auto* p = sqlite3_column_text(_stmt, col)) {
         return string_view(reinterpret_cast<const char*>(p), iicast<size_t>(sqlite3_column_bytes(_stmt, col)));
     }
-    RETURN_UNEXPECTED_ON_SQLITE3_ERRCODE
+    if (auto* db = db_handle(); sqlite3_errcode(db) == SQLITE_NOMEM) {
+        return unexpected(current_error(SQLITE_NOMEM, db));
+    }
     return {};
 }
 
 expected<optional<span<const byte>>, current_error> statement::column_blob_opt(int col)
 {
-    if (auto* p = sqlite3_column_blob(_stmt, col)) {
-        return span(static_cast<const byte*>(p), iicast<size_t>(sqlite3_column_bytes(_stmt, col)));
+    if (auto ct = column_type(col)) {
+        if (*ct == datatype::null) {
+            return nullopt;
+        }
+        // Column is not NULL: non-empty, empty or NOMEM
+        if (auto* p = sqlite3_column_blob(_stmt, col)) {
+            return span(static_cast<const byte*>(p), iicast<size_t>(sqlite3_column_bytes(_stmt, col)));
+        }
+        // Column is empty or NOMEM
+        if (auto* db = db_handle(); sqlite3_errcode(db) == SQLITE_NOMEM) {
+            // Note about an edge-case: if a previous operation resulted in NOMEM we end up here even when this column
+            // is empty, instead of returning an empty blob.
+            return unexpected(current_error(SQLITE_NOMEM, db));
+        }
+        return optional(span<const byte>());
+    } else {
+        return unexpected(ct.error());
     }
-    RETURN_UNEXPECTED_ON_ERROR_OR_NULLOPT_ON_NULL
-    return optional(span<const byte>());
+}
+
+expected<optional<double>, current_error> statement::column_double_opt(int col)
+{
+    if (auto ct = column_type(col)) {
+        if (*ct == datatype::null) {
+            return nullopt;
+        }
+        return sqlite3_column_double(_stmt, col);
+    } else {
+        return unexpected(ct.error());
+    }
+}
+
+expected<optional<int>, current_error> statement::column_int_opt(int col)
+{
+    if (auto ct = column_type(col)) {
+        if (*ct == datatype::null) {
+            return nullopt;
+        }
+        return sqlite3_column_int(_stmt, col);
+    } else {
+        return unexpected(ct.error());
+    }
+}
+
+expected<optional<int64_t>, current_error> statement::column_int64_opt(int col)
+{
+    if (auto ct = column_type(col)) {
+        if (*ct == datatype::null) {
+            return nullopt;
+        }
+        return sqlite3_column_int64(_stmt, col);
+    } else {
+        return unexpected(ct.error());
+    }
 }
 
 expected<optional<string_view>, current_error> statement::column_text_opt(int col)
 {
-    if (auto* p = sqlite3_column_text(_stmt, col)) {
-        return string_view(reinterpret_cast<const char*>(p), iicast<size_t>(sqlite3_column_bytes(_stmt, col)));
+    if (auto ct = column_type(col)) {
+        if (*ct == datatype::null) {
+            return nullopt;
+        }
+        // Column is not NULL: non-empty, empty or NOMEM
+        // Unlike empty blob, empty text results in an empty string, not nullptr.
+        if (auto* p = sqlite3_column_text(_stmt, col)) {
+            return string_view(reinterpret_cast<const char*>(p), iicast<size_t>(sqlite3_column_bytes(_stmt, col)));
+        }
+        // The only valid case here is NOMEM.
+        if (auto* db = db_handle(); sqlite3_errcode(db) == SQLITE_NOMEM) {
+            return unexpected(current_error(SQLITE_NOMEM, db));
+        }
+        return unexpected(current_error(SQLITE_INTERNAL, nullptr));
+    } else {
+        return unexpected(ct.error());
     }
-    RETURN_UNEXPECTED_ON_ERROR_OR_NULLOPT_ON_NULL
-    return optional(string_view());
 }
 
 expected<datatype, current_error> statement::column_type(int col)
@@ -139,16 +204,11 @@ expected<datatype, current_error> statement::column_type(int col)
     case SQLITE_FLOAT:
     case SQLITE_TEXT:
     case SQLITE_BLOB:
+    case SQLITE_NULL:
         return static_cast<datatype>(r);
     default:
-        assert(r == SQLITE_NULL); // sqlite3_column_type is not expected to return anything else.
-        {
-            auto* db = db_handle();
-            if (int rc = sqlite3_errcode(db)) {
-                return unexpected(current_error(rc, db));
-            }
-        }
-        return datatype::null;
+        assert(false); // sqlite3_column_type is not expected to return anything else.
+        return unexpected(current_error(r, nullptr));
     }
 }
 

@@ -110,8 +110,8 @@ struct error {
 class current_error
 {
 public:
+    // Construct from the result of a function called on db.
     current_error(int errcode, sqlite3* db);
-    explicit current_error(sqlite3* db);
 
     [[nodiscard]] int errcode() const;
     [[nodiscard]] int extended_errcode() const;
@@ -308,6 +308,9 @@ public:
 
     // Optional column getters: actual NULL is returned as std::nullopt, error as std::unexpected.
     expected<optional<span<const byte>>, current_error> column_blob_opt(int col);
+    expected<optional<double>, current_error> column_double_opt(int col);
+    expected<optional<int>, current_error> column_int_opt(int col);
+    expected<optional<int64_t>, current_error> column_int64_opt(int col);
     expected<optional<string_view>, current_error> column_text_opt(int col);
 
     // sqlite3_reset().
@@ -319,7 +322,7 @@ public:
     // Convenience compound functions:
 
     // sqlite3_step(), verify it's SQLITE_DONE, then return sqlite3_changes().
-    expected<int, current_error> step_done_changes();
+    expected<int, current_error> step_expect_done_then_changes();
 
 private:
     sqlite3_stmt* _stmt;
@@ -348,11 +351,14 @@ public:
     [[nodiscard]] expected<void, current_error> close();
 
     // sqlite3_exec().
+    // Note: The (deprecated) `PRAGMA empty_result_callbacks` allows calling `row_callback` even when the result has
+    // zero rows. In this case the callback function will be called with an empty `column_texts` but valid
+    // `column_names`. Otherwise, the size of the two spans are identical.
     using row_callback_t = function<int(span<const char* const> column_texts, span<const char* const> column_names)>;
     [[nodiscard]] expected<void, current_error> exec(string_like_zt sql, const row_callback_t& row_callback = {});
 
     // sqlite3_exec(), then return sqlite3_changes().
-    [[nodiscard]] expected<int, current_error> exec_changes(string_like_zt sql);
+    [[nodiscard]] expected<int, current_error> exec_then_changes(string_like_zt sql);
 
     // sqlite3_errmsg().
     [[nodiscard]] const char* errmsg() const;
@@ -370,7 +376,7 @@ public:
     // Note: if `sql` contains no SQL (if the input is an empty string or a comment), unexpected will be returned
     // with SQLITE_OK as the error. This is similar to sqlite3_prepare_v2() which returns SQLITE_OK but the statement
     // pointer is set to NULL.
-    expected<statement, current_error> prepare(string_like sql);
+    expected<statement, current_error> prepare_v2(string_like sql);
 
 private:
     sqlite3* _db;
