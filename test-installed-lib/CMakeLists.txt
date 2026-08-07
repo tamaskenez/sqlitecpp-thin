@@ -3,6 +3,10 @@ project(test-installed-lib)
 
 enable_testing()
 
+foreach(p IN LISTS CMAKE_PREFIX_PATH)
+	message(STATUS "CMAKE_PREFIX_PATH: ${p}")
+endforeach()
+
 find_package(sqlitecpp-thin REQUIRED CONFIG)
 
 add_executable(test-installed-lib test-installed-lib.cpp)
