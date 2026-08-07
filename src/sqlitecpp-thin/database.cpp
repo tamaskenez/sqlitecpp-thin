@@ -1,6 +1,7 @@
 #include "include/sqlitecpp-thin/sqlite3.hpp"
 
 #include "common.hpp"
+#include <climits>
 
 #define RETURN_UNEXPECTED_ON_ERROR(X)              \
     if (int rc = (X)) {                            \
@@ -61,11 +62,15 @@ int row_callback_caller(void* void_row_callback_ptr, int num_columns, char** col
 {
     auto* row_callback_ptr = static_cast<const database::row_callback_t*>(void_row_callback_ptr);
     const auto nc = iicast<size_t>(num_columns);
-    return (*row_callback_ptr)(
-      // The (deprecated) `PRAGMA empty_result_callbacks` allows `column_texts` to be nullptr.
-      column_texts ? span<const char* const>(column_texts, nc) : span<const char* const>(),
-      span<const char* const>(column_names, nc)
-    );
+    try {
+        return (*row_callback_ptr)(
+          // The (deprecated) `PRAGMA empty_result_callbacks` allows `column_texts` to be nullptr.
+          column_texts ? span<const char* const>(column_texts, nc) : span<const char* const>(),
+          span<const char* const>(column_names, nc)
+        );
+    } catch (...) {
+        return SQLITE_ABORT;
+    }
 }
 } // namespace
 
@@ -107,15 +112,18 @@ int database::error_offset() const
     return sqlite3_error_offset(_db);
 }
 
-expected<statement, current_error> database::prepare_v2(string_like sql)
+expected<statement, current_error> database::prepare_v2(string_like sql, const char** pzTail)
 {
+    if (sql.size() && std::cmp_greater(*sql.size(), INT_MAX)) {
+        return unexpected(current_error(SQLITE_TOOBIG, nullptr));
+    }
     sqlite3_stmt* stmt{};
     RETURN_UNEXPECTED_ON_ERROR(sqlite3_prepare_v2(
       _db,
-      sql.size() == 0 ? "" : sql.c_str(),
+      sql.size() == 0 ? "" : sql.data(),
       sql.size() ? iicast<int>(*sql.size()) : -1, // Note: zero terminator doesn't need to be included in the size.
       &stmt,
-      nullptr
+      pzTail
     ))
     if (stmt) {
         return statement(stmt);
