@@ -4,7 +4,7 @@
 
 int main()
 {
-    auto db = sqlite::open(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
+    auto db = sqlite::open_v2(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
     if (!db) {
         return EXIT_FAILURE;
     }
