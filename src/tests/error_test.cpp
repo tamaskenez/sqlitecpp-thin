@@ -2,7 +2,7 @@ TEST(error, failing_nonvoid_function_with_error)
 {
     for (bool fail : {false, true}) {
         auto db =
-          sqlite::open(fail ? "/nosuch/file/or/directory" : ":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
+          sqlite::open_v2(fail ? "/nosuch/file/or/directory" : ":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
         ASSERT_EQ(db.has_value(), !fail);
         if (!db) {
             sqlite3* pdb{};
@@ -21,9 +21,9 @@ TEST(error, failing_nonvoid_function_with_current_error)
 {
     const char* badSql = "SELECT * FROM foo FROM";
     for (bool fail : {false, true}) {
-        auto db = sqlite::open(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE).value();
+        auto db = sqlite::open_v2(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE).value();
         ASSERT_TRUE(db.exec("CREATE TABLE IF NOT EXISTS foo (a INTEGER)"));
-        auto stmt = db.prepare(fail ? badSql : "SELECT * FROM foo");
+        auto stmt = db.prepare_v2(fail ? badSql : "SELECT * FROM foo");
         ASSERT_EQ(stmt.has_value(), !fail);
         if (!stmt) {
             auto* pdb = db.handle();
@@ -50,7 +50,7 @@ TEST(error, failing_void_function_with_current_error)
 {
     const char* badSql = "CREATE TABLE IF NOT EXISTS foo a INTEGER";
     for (bool fail : {false, true}) {
-        auto db = sqlite::open(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE).value();
+        auto db = sqlite::open_v2(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE).value();
         auto execResult = db.exec(fail ? badSql : "CREATE TABLE IF NOT EXISTS foo (a INTEGER)");
         ASSERT_EQ(execResult.has_value(), !fail);
         if (!execResult) {

@@ -1,4 +1,4 @@
-file(GLOB sources CONFIGURE_DEPENDS *.hpp *.cpp)
+file(GLOB_RECURSE sources CONFIGURE_DEPENDS *.hpp *.cpp)
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${sources})
 
 add_library(sqlitecpp-thin ${sources})
@@ -17,7 +17,7 @@ target_include_directories(sqlitecpp-thin
 
 target_compile_features(sqlitecpp-thin PUBLIC cxx_std_23)
 
-if(CMAKE_INSTALL_PREFIX)
+if(PROJECT_IS_TOP_LEVEL)
 	install(TARGETS sqlitecpp-thin EXPORT sqlitecpp-thin-targets)
 	install(FILES include/sqlitecpp-thin/sqlite3.hpp
 		DESTINATION include/sqlitecpp-thin

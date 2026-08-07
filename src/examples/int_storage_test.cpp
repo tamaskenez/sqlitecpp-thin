@@ -66,7 +66,7 @@ size_t int_storage_test(const std::vector<AI3>& data, bool use_int64)
     } delete_on_exit{.temp_file_path = temp_file_path};
 
     {
-        auto db = must(sqlite::open(temp_file_path, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE));
+        auto db = must(sqlite::open_v2(temp_file_path, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE));
 
         must(db.exec(R"#(
             CREATE TABLE IF NOT EXISTS integers (
@@ -77,7 +77,7 @@ size_t int_storage_test(const std::vector<AI3>& data, bool use_int64)
             )#"));
 
         {
-            auto stmt = must(db.prepare("INSERT INTO integers(a, b, c) VALUES(?, ?, ?)"));
+            auto stmt = must(db.prepare_v2("INSERT INTO integers(a, b, c) VALUES(?, ?, ?)"));
             for (auto& r : data) {
                 for (size_t i = 0; i < 3; ++i) {
                     if (use_int64) {
@@ -86,7 +86,7 @@ size_t int_storage_test(const std::vector<AI3>& data, bool use_int64)
                         must(stmt.bind_int(int(i + 1), r[i]));
                     }
                 }
-                [[maybe_unused]] auto changes = must(stmt.step_done_changes());
+                [[maybe_unused]] auto changes = must(stmt.step_expect_done_then_changes());
                 assert(changes == 1);
                 must(stmt.reset());
             }
@@ -94,10 +94,10 @@ size_t int_storage_test(const std::vector<AI3>& data, bool use_int64)
 
         // Verify number of rows.
         {
-            auto stmt = must(db.prepare("SELECT count(1) FROM integers"));
+            auto stmt = must(db.prepare_v2("SELECT count(1) FROM integers"));
             switch (must(stmt.step())) {
             case sqlite::step_result::row: {
-                [[maybe_unused]] auto count = must(stmt.column_int64(0));
+                [[maybe_unused]] auto count = stmt.column_int64(0);
                 assert(std::cmp_equal(data.size(), count));
             } break;
             case sqlite::step_result::done:
@@ -116,11 +116,11 @@ size_t int_storage_test(const std::vector<AI3>& data, bool use_int64)
                 [[maybe_unused]] auto itb = map.insert(std::pair(r[0], BC{.b = r[1], .c = r[2]}));
                 assert(itb.second);
             }
-            auto stmt = must(db.prepare("SELECT a, b, c FROM integers"));
+            auto stmt = must(db.prepare_v2("SELECT a, b, c FROM integers"));
             while (must(stmt.step()) == sqlite::step_result::row) {
-                auto a = must(stmt.column_int(0));
-                [[maybe_unused]] auto b = must(stmt.column_int(1));
-                [[maybe_unused]] auto c = must(stmt.column_int(2));
+                auto a = stmt.column_int(0);
+                [[maybe_unused]] auto b = stmt.column_int(1);
+                [[maybe_unused]] auto c = stmt.column_int(2);
                 auto it = map.find(a);
                 if (it != map.end()) {
                     assert(it->second.b == b);

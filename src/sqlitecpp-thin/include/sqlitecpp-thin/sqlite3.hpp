@@ -1,9 +1,8 @@
 #pragma once
 
-#include "sqlite3.h"
+#include <sqlite3.h>
 
 #include <concepts>
-#include <cstdint>
 #include <expected>
 #include <filesystem>
 #include <functional>
@@ -47,6 +46,11 @@ private:
 
 // String-like function parameter when zero-termination is not needed.
 struct string_like {
+    string_like(std::nullptr_t)
+        : _c_str(nullptr)
+    {
+    }
+
     // This one accepts `const char*`. We need to constrain it with an inline concept otherwise it gets selected for
     // string literals, too.
     string_like(std::same_as<const char*> auto cc)
@@ -106,8 +110,8 @@ struct error {
 class current_error
 {
 public:
+    // Construct from the result of a function called on db.
     current_error(int errcode, sqlite3* db);
-    explicit current_error(sqlite3* db);
 
     [[nodiscard]] int errcode() const;
     [[nodiscard]] int extended_errcode() const;
@@ -283,19 +287,19 @@ public:
     // Normal column getters:
     // Return null-like values (empty blob, 0.0, 0, "") for NULL values.
 
-    // sqlite3_column_blob() and sqlite3_column_bytes64().
+    // sqlite3_column_blob() and sqlite3_column_bytes().
     expected<span<const byte>, current_error> column_blob(int col);
 
     // sqlite3_column_double().
-    expected<double, current_error> column_double(int col);
+    double column_double(int col);
 
     // sqlite3_column_int().
-    expected<int, current_error> column_int(int col);
+    int column_int(int col);
 
     // sqlite3_column_int64().
-    expected<int64_t, current_error> column_int64(int col);
+    int64_t column_int64(int col);
 
-    // sqlite3_column_text() and sqlite3_column_bytes64()
+    // sqlite3_column_text() and sqlite3_column_bytes()
     // The `data()` of the returned value can be used as `const char*` since it's zero-terminated.
     expected<string_view, current_error> column_text(int col);
 
@@ -318,7 +322,7 @@ public:
     // Convenience compound functions:
 
     // sqlite3_step(), verify it's SQLITE_DONE, then return sqlite3_changes().
-    expected<int, current_error> step_done_changes();
+    expected<int, current_error> step_expect_done_then_changes();
 
 private:
     sqlite3_stmt* _stmt;
@@ -347,11 +351,14 @@ public:
     [[nodiscard]] expected<void, current_error> close();
 
     // sqlite3_exec().
+    // Note: The (deprecated) `PRAGMA empty_result_callbacks` allows calling `row_callback` even when the result has
+    // zero rows. In this case the callback function will be called with an empty `column_texts` but valid
+    // `column_names`. Otherwise, the size of the two spans are identical.
     using row_callback_t = function<int(span<const char* const> column_texts, span<const char* const> column_names)>;
     [[nodiscard]] expected<void, current_error> exec(string_like_zt sql, const row_callback_t& row_callback = {});
 
     // sqlite3_exec(), then return sqlite3_changes().
-    [[nodiscard]] expected<int, current_error> exec_changes(string_like_zt sql);
+    [[nodiscard]] expected<int, current_error> exec_then_changes(string_like_zt sql);
 
     // sqlite3_errmsg().
     [[nodiscard]] const char* errmsg() const;
@@ -366,14 +373,17 @@ public:
     [[nodiscard]] int error_offset() const;
 
     // sqlite3_prepare().
-    expected<statement, current_error> prepare(string_like sql);
+    // Note: if `sql` contains no SQL (if the input is an empty string or a comment), unexpected will be returned
+    // with SQLITE_OK as the error. This is similar to sqlite3_prepare_v2() which returns SQLITE_OK but the statement
+    // pointer is set to NULL.
+    expected<statement, current_error> prepare_v2(string_like sql);
 
 private:
     sqlite3* _db;
 };
 
-expected<database, error> open(const string& filename, int flags);
-expected<database, error> open(const char* filename, int flags);
-expected<database, error> open(const fs::path& filename, int flags);
+expected<database, error> open_v2(const string& filename, int flags);
+expected<database, error> open_v2(const char* filename, int flags);
+expected<database, error> open_v2(const fs::path& filename, int flags);
 
 } // namespace sqlite

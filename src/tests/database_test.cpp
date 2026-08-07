@@ -3,7 +3,7 @@
 TEST(database, prepare_query_text_modes)
 {
     for (bool with_size : {false, true}) {
-        auto db = sqlite::open(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE).value();
+        auto db = sqlite::open_v2(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE).value();
         ASSERT_TRUE(db.exec("CREATE TABLE foo (a INTEGER)"));
 
         ASSERT_TRUE(db.exec("INSERT INTO foo(a) VALUES(2)"));
@@ -17,7 +17,7 @@ TEST(database, prepare_query_text_modes)
         ASSERT_TRUE(db.exec("INSERT INTO foo(a) VALUES(222)"));
 
         const std::string query = "SELECT count(1) FROM foo WHERE a = 22";
-        auto stmt = (with_size ? db.prepare(query) : db.prepare(query.c_str())).value();
+        auto stmt = (with_size ? db.prepare_v2(query) : db.prepare_v2(query.c_str())).value();
 
         ASSERT_EQ(stmt.step(), sqlite::step_result::row);
         ASSERT_EQ(stmt.column_int(0), 3);
@@ -32,7 +32,7 @@ TEST(database, exec_with_row_callback)
       {4, "four" }
     };
     for (bool first_two_rows_only : {false, true}) {
-        auto db = sqlite::open(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE).value();
+        auto db = sqlite::open_v2(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE).value();
         ASSERT_TRUE(db.exec("CREATE TABLE foo (a INTEGER, s TEXT)"));
         for (auto& d : data) {
             ASSERT_TRUE(db.exec("INSERT INTO foo(a, s) VALUES(" + std::to_string(d.first) + ", '" + d.second + "')"));
@@ -67,7 +67,7 @@ TEST(database, exec_with_row_callback)
 
 TEST(database, exec_changes)
 {
-    auto db = sqlite::open(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE).value();
+    auto db = sqlite::open_v2(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE).value();
     ASSERT_TRUE(db.exec("CREATE TABLE foo (a INTEGER)"));
 
     ASSERT_TRUE(db.exec("INSERT INTO foo(a) VALUES(2)"));
@@ -80,5 +80,5 @@ TEST(database, exec_changes)
     ASSERT_TRUE(db.exec("INSERT INTO foo(a) VALUES(222)"));
     ASSERT_TRUE(db.exec("INSERT INTO foo(a) VALUES(222)"));
 
-    ASSERT_EQ(db.exec_changes("DELETE FROM foo WHERE a = 22"), 3);
+    ASSERT_EQ(db.exec_then_changes("DELETE FROM foo WHERE a = 22"), 3);
 }

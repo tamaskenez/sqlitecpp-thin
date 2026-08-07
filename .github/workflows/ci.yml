@@ -7,17 +7,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
+  build-and-test:
     strategy:
       matrix:
-        include:
-          - os: macos-latest
-            cmake_generator: -G Xcode
-            platform_label: macos-arm64
-          - os: windows-latest
-            cmake_generator: ""
-            platform_label: win-x64
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v6
@@ -27,7 +21,7 @@ jobs:
 
       - name: Build Conan dependencies
         shell: bash
-        run: ./1_build_conan.sh --use-deployer
+        run: ./1_build_conan_deps.sh --use-deployer
 
       - name: Configure
         shell: bash

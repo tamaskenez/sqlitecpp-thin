@@ -79,7 +79,7 @@ TEST(open, utf8_filename_fs_path)
 {
     UnicodeFilenameHelper ufh;
     {
-        ASSERT_TRUE(sqlite::open(fs::path(k_u8_unicode_string), SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE));
+        ASSERT_TRUE(sqlite::open_v2(fs::path(k_u8_unicode_string), SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE));
     }
     ufh.test();
 }

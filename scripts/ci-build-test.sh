@@ -20,7 +20,7 @@ if [[ "${COMMAND}" == "test" ]]; then
 fi
 
 if [[ "${COMMAND}" == "test-installed" ]]; then
-  cmake -S test-installed-lib -B _bi-${CONFIG} -D CMAKE_BUILD_TYPE=${CONFIG} -D "CMAKE_PREFIX_PATH=../_d;../_i"
+  cmake -S test-installed-lib -B _bi-${CONFIG} -D CMAKE_BUILD_TYPE=${CONFIG}
   cmake --build _bi-${CONFIG} --config ${CONFIG} -j
   ctest --test-dir _bi-${CONFIG} -C ${CONFIG} --output-on-failure
 fi

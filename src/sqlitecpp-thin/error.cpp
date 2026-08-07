@@ -12,38 +12,54 @@ namespace sqlite
 {
 current_error::current_error(int errcode, sqlite3* db)
     : _errcode(errcode)
-    , _db(db)
-{
-}
-
-current_error::current_error(sqlite3* db)
-    : _errcode(sqlite3_errcode(db))
-    , _db(db)
+    // Not all errors are set on the database, for example SQLITE_MISUSE sometimes isn't.
+    // Indicate it by not storing db.
+    // Note: rare corner case not handled: for example, an SQLITE_MISUSE is already set on the database while
+    // encountering a second SQLITE_MISUSE which is not set on the database. We will mistakenly store the db for the
+    // second SQLITE_MISUSE, too.
+    , _db(db && sqlite3_errcode(db) == errcode ? db : nullptr)
 {
 }
 
 int current_error::errcode() const
 {
-    assert(_errcode == sqlite3_errcode(_db));
+    assert(
+      !_db || _errcode == sqlite3_errcode(_db)
+    ); // Probable reason: another operation was performed on the database after this current_error was obtained.
     return _errcode;
 }
 
 int current_error::extended_errcode() const
 {
-    assert(_errcode == sqlite3_errcode(_db));
-    return sqlite3_extended_errcode(_db);
+    if (_db) {
+        assert(
+          _errcode == sqlite3_errcode(_db)
+        ); // Probable reason: another operation was performed on the database after this current_error was obtained.
+        return sqlite3_extended_errcode(_db);
+    }
+    return _errcode;
 }
 
 const char* current_error::errmsg() const
 {
-    assert(_errcode == sqlite3_errcode(_db));
-    return sqlite3_errmsg(_db);
+    if (_db) {
+        assert(
+          _errcode == sqlite3_errcode(_db)
+        ); // Probable reason: another operation was performed on the database after this current_error was obtained.
+        return sqlite3_errmsg(_db);
+    }
+    return nullptr;
 }
 
 int current_error::error_offset() const
 {
-    assert(_errcode == sqlite3_errcode(_db));
-    return sqlite3_error_offset(_db);
+    if (_db) {
+        assert(
+          _errcode == sqlite3_errcode(_db)
+        ); // Probable reason: another operation was performed on the database after this current_error was obtained.
+        return sqlite3_error_offset(_db);
+    }
+    return -1;
 }
 
 error current_error::get_error() const
@@ -72,29 +88,16 @@ string error::format() const
         return error_offset >= 0 ? format::format(" at char {}", error_offset) : string();
     };
 
-    const char* errstr = sqlite3_errstr(extended_errcode);
+    const char* errstr = sqlite3_errstr(errcode);
     if (errstr) {
         return format::format(
           "{} ({}){}: \"{}\"", errstr, macro_name_or_number(extended_errcode), maybe_offset(), errmsg
         );
     }
 
-    if (errcode != extended_errcode) {
-        if (errstr = sqlite3_errstr(errcode); errstr) {
-            return format::format(
-              "{} ({}){}: \"{}\", extended_errcode ({}) is invalid",
-              errstr,
-              macro_name_or_number(errcode),
-              maybe_offset(),
-              errmsg,
-              macro_name_or_number(extended_errcode)
-            );
-        }
-    }
-
-    // Both errcode and extended_errcode are invalid, which means `sqlite3_errstr()` returns nullptr
+    // Both errcode is invalid, which means `sqlite3_errstr()` returns nullptr
     return format::format(
-      "Unknown SQL error{}: \"{}\", both errcode ({}) and extended_errcode ({}) are invalid",
+      "Unknown SQL error{}: \"{}\", no errstr for errcode {}, extended_errcode: {}",
       maybe_offset(),
       errmsg,
       macro_name_or_number(errcode),
