@@ -1,22 +1,5 @@
 #include "test_util.hpp"
 
-// Regression tests for the defects found in the review of `src/sqlitecpp-thin`.
-//
-// The DISABLED_ tests assert the *correct* behaviour, which the library does not implement yet, so
-// they are disabled to keep the suite green. Drop the prefix as each defect gets fixed. Run them
-// with:
-//
-//     tests --gtest_also_run_disabled_tests
-//
-// WARNING: two of them do not fail, they take the process down with them - a segfault for the error
-// formatting one, an assert in ~database() for the exec() one. That ends the whole run, so run those
-// two one at a time:
-//
-//     tests --gtest_also_run_disabled_tests --gtest_filter='*DISABLED_current_error*'
-//
-// The tests without the prefix pass today; they pin down behaviour the current implementation
-// relies on, or cover gaps that made the defects below possible in the first place.
-
 namespace
 {
 
@@ -463,6 +446,14 @@ TEST(regression, errcode_macro_name_returns_null_for_unknown_codes)
 TEST(regression, string_like_size_with_literal)
 {
     const auto sl = sqlite::string_like("abc");
+    EXPECT_EQ(sl.size(), 3);
+    EXPECT_EQ(strncmp(sl.data(), "abc", 3), 0);
+}
+
+TEST(regression, string_like_size_with_array)
+{
+    constexpr char arr[3] = {'a', 'b', 'c'};
+    const auto sl = sqlite::string_like(arr);
     EXPECT_EQ(sl.size(), 3);
     EXPECT_EQ(strncmp(sl.data(), "abc", 3), 0);
 }

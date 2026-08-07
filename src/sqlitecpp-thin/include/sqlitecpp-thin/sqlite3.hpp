@@ -61,7 +61,7 @@ struct string_like {
     template<size_t N>
     string_like(const char (&string_literal)[N])
         : _data(string_literal)
-        , _size(N - 1)
+        , _size(string_literal[N - 1] == 0 ? N - 1 : N)
     {
         static_assert(N > 0);
     }

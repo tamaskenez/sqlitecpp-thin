@@ -9,10 +9,11 @@ namespace
 {
 error create_error_for_db(sqlite3* db)
 {
+    const auto* msg = sqlite3_errmsg(db); // Might be nullptr.
     return error{
       .errcode = sqlite3_errcode(db),
       .extended_errcode = sqlite3_extended_errcode(db),
-      .errmsg = sqlite3_errmsg(db),
+      .errmsg = msg ? string(msg) : string(),
       .error_offset = sqlite3_error_offset(db)
     };
 }

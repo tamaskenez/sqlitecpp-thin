@@ -1,6 +1,7 @@
 #include "include/sqlitecpp-thin/sqlite3.hpp"
 
 #include "common.hpp"
+#include <climits>
 
 #define RETURN_UNEXPECTED_ON_ERROR(X)              \
     if (int rc = (X)) {                            \
@@ -113,13 +114,14 @@ int database::error_offset() const
 
 expected<statement, current_error> database::prepare_v2(string_like sql, const char** pzTail)
 {
+    if (sql.size() && std::cmp_greater(*sql.size(), INT_MAX)) {
+        return unexpected(current_error(SQLITE_TOOBIG, nullptr));
+    }
     sqlite3_stmt* stmt{};
     RETURN_UNEXPECTED_ON_ERROR(sqlite3_prepare_v2(
       _db,
       sql.size() == 0 ? "" : sql.data(),
-      sql.size() && std::cmp_less_equal(*sql.size(), INT_MAX)
-        ? iicast<int>(*sql.size())
-        : -1, // Note: zero terminator doesn't need to be included in the size.
+      sql.size() ? iicast<int>(*sql.size()) : -1, // Note: zero terminator doesn't need to be included in the size.
       &stmt,
       pzTail
     ))
