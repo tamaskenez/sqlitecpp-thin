@@ -18,7 +18,7 @@ namespace
 // apart from a failure), plus a row of genuine NULLs and a row of ordinary non-zero values.
 sqlite::database make_db()
 {
-    auto db = sqlite::open(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE).value();
+    auto db = sqlite::open_v2(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE).value();
     EXPECT_TRUE(db.exec("CREATE TABLE t (id INTEGER, i INTEGER, i64 INTEGER, d REAL, s TEXT, b BLOB)"));
     EXPECT_TRUE(db.exec("INSERT INTO t VALUES (0, 0, 0, 0.0, '', x'')"));
     EXPECT_TRUE(db.exec("INSERT INTO t VALUES (1, NULL, NULL, NULL, NULL, NULL)"));

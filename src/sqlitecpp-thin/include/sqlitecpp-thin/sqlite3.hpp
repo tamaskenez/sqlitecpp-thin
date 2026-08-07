@@ -382,8 +382,8 @@ private:
     sqlite3* _db;
 };
 
-expected<database, error> open(const string& filename, int flags);
-expected<database, error> open(const char* filename, int flags);
-expected<database, error> open(const fs::path& filename, int flags);
+expected<database, error> open_v2(const string& filename, int flags);
+expected<database, error> open_v2(const char* filename, int flags);
+expected<database, error> open_v2(const fs::path& filename, int flags);
 
 } // namespace sqlite

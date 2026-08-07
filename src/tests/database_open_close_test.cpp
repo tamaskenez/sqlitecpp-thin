@@ -1,37 +1,37 @@
 TEST(open, memory_const_char)
 {
-    auto db = sqlite::open(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
+    auto db = sqlite::open_v2(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
     ASSERT_TRUE(db);
     ASSERT_TRUE(db->close());
 }
 
 TEST(open, memory_string)
 {
-    auto db = sqlite::open(std::string(":memory:"), SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
+    auto db = sqlite::open_v2(std::string(":memory:"), SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
     ASSERT_TRUE(db);
     ASSERT_TRUE(db->close());
 }
 
 TEST(open, memory_path)
 {
-    auto db = sqlite::open(std::filesystem::path(":memory:"), SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
+    auto db = sqlite::open_v2(std::filesystem::path(":memory:"), SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
     ASSERT_TRUE(db);
     ASSERT_TRUE(db->close());
 }
 
 TEST(open, fail_on_invalid_file)
 {
-    auto db = sqlite::open("/nosuch/file/or/directory", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
+    auto db = sqlite::open_v2("/nosuch/file/or/directory", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
     ASSERT_FALSE(db);
 }
 
 TEST(open, moves)
 {
     // Open 2 databases and remember raw handles.
-    auto db1 = sqlite::open(std::filesystem::path(":memory:"), SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
+    auto db1 = sqlite::open_v2(std::filesystem::path(":memory:"), SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
     ASSERT_TRUE(db1);
     auto* db1_handle = db1->handle();
-    auto db2 = sqlite::open(std::filesystem::path(":memory:"), SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
+    auto db2 = sqlite::open_v2(std::filesystem::path(":memory:"), SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
     ASSERT_TRUE(db2);
     auto* db2_handle = db2->handle();
 
@@ -67,7 +67,7 @@ TEST(open, database_destructor)
 {
     sqlite3* db_handle{};
     {
-        auto db = sqlite::open(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
+        auto db = sqlite::open_v2(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
         ASSERT_TRUE(db);
         db_handle = db->handle();
         // db destructed.

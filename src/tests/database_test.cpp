@@ -3,7 +3,7 @@
 TEST(database, prepare_query_text_modes)
 {
     for (bool with_size : {false, true}) {
-        auto db = sqlite::open(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE).value();
+        auto db = sqlite::open_v2(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE).value();
         ASSERT_TRUE(db.exec("CREATE TABLE foo (a INTEGER)"));
 
         ASSERT_TRUE(db.exec("INSERT INTO foo(a) VALUES(2)"));
@@ -32,7 +32,7 @@ TEST(database, exec_with_row_callback)
       {4, "four" }
     };
     for (bool first_two_rows_only : {false, true}) {
-        auto db = sqlite::open(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE).value();
+        auto db = sqlite::open_v2(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE).value();
         ASSERT_TRUE(db.exec("CREATE TABLE foo (a INTEGER, s TEXT)"));
         for (auto& d : data) {
             ASSERT_TRUE(db.exec("INSERT INTO foo(a, s) VALUES(" + std::to_string(d.first) + ", '" + d.second + "')"));
@@ -67,7 +67,7 @@ TEST(database, exec_with_row_callback)
 
 TEST(database, exec_changes)
 {
-    auto db = sqlite::open(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE).value();
+    auto db = sqlite::open_v2(":memory:", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE).value();
     ASSERT_TRUE(db.exec("CREATE TABLE foo (a INTEGER)"));
 
     ASSERT_TRUE(db.exec("INSERT INTO foo(a) VALUES(2)"));

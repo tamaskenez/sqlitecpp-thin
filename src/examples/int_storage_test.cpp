@@ -66,7 +66,7 @@ size_t int_storage_test(const std::vector<AI3>& data, bool use_int64)
     } delete_on_exit{.temp_file_path = temp_file_path};
 
     {
-        auto db = must(sqlite::open(temp_file_path, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE));
+        auto db = must(sqlite::open_v2(temp_file_path, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE));
 
         must(db.exec(R"#(
             CREATE TABLE IF NOT EXISTS integers (

@@ -22,7 +22,7 @@ error create_error_for_db(sqlite3* db)
 }
 } // namespace
 
-expected<database, error> open(const char* filename, int flags)
+expected<database, error> open_v2(const char* filename, int flags)
 {
     sqlite3* db{};
     if (sqlite3_open_v2(filename, &db, flags, nullptr)) {
@@ -33,15 +33,15 @@ expected<database, error> open(const char* filename, int flags)
     return database(db);
 }
 
-expected<database, error> open(const string& filename, int flags)
+expected<database, error> open_v2(const string& filename, int flags)
 {
-    return open(filename.c_str(), flags);
+    return open_v2(filename.c_str(), flags);
 }
 
-expected<database, error> open(const fs::path& filename, int flags)
+expected<database, error> open_v2(const fs::path& filename, int flags)
 {
     const auto u8string = filename.u8string();
-    return open(reinterpret_cast<const char*>(u8string.c_str()), flags);
+    return open_v2(reinterpret_cast<const char*>(u8string.c_str()), flags);
 }
 
 const char* errcode_macro_name(int rc)
