@@ -47,39 +47,40 @@ private:
 // String-like function parameter when zero-termination is not needed.
 struct string_like {
     string_like(std::nullptr_t)
-        : _c_str(nullptr)
+        : _data(nullptr)
     {
     }
 
     // This one accepts `const char*`. We need to constrain it with an inline concept otherwise it gets selected for
     // string literals, too.
     string_like(std::same_as<const char*> auto cc)
-        : _c_str(cc)
+        : _data(cc)
     {
     }
 
     template<size_t N>
     string_like(const char (&string_literal)[N])
-        : _c_str(string_literal)
-        , _size(N)
+        : _data(string_literal)
+        , _size(N - 1)
     {
+        static_assert(N > 0);
     }
 
     string_like(const string& s)
-        : _c_str(s.c_str())
+        : _data(s.c_str())
         , _size(s.size())
     {
     }
 
     string_like(string_view sv)
-        : _c_str(sv.data())
+        : _data(sv.data())
         , _size(sv.size())
     {
     }
 
-    [[nodiscard]] const char* c_str() const
+    [[nodiscard]] const char* data() const
     {
-        return _c_str;
+        return _data;
     }
 
     [[nodiscard]] const optional<size_t>& size() const
@@ -88,7 +89,7 @@ struct string_like {
     }
 
 private:
-    const char* _c_str;
+    const char* _data;
     optional<size_t> _size;
 };
 
@@ -115,7 +116,7 @@ public:
 
     [[nodiscard]] int errcode() const;
     [[nodiscard]] int extended_errcode() const;
-    [[nodiscard]] const char* errmsg() const;
+    [[nodiscard]] const char* errmsg() const; // Might return nullptr, just like sqlite_errmsg().
     [[nodiscard]] int error_offset() const;
 
     [[nodiscard]] error get_error() const;
@@ -171,8 +172,8 @@ public:
     // The `bind_blob_copy` and `bind_text_copy` functions make a copy of the memory block before
     // returning, which corresponds to the `SQLITE_TRANSIENT` flag on the C interface.
     //
-    // Note that while `bind_blob(int, string&&)` and `bind_text(int, string&&)` are deleted, in C++ it's still easier
-    // to accidentally provide a temporary object to these functions then it is in C. For example:
+    // Note that while `bind_blob(int, string&&)` and `bind_text(int, string&&)` are deleted, in C++ it's still easy
+    // to accidentally provide a temporary object to these functions. For example:
     //
     //     stmt.bind_text(0, std::string_view(produce_some_string(...))); # Compiles OK but use-after-free!!!
     //
@@ -284,8 +285,10 @@ public:
 
     expected<step_result, current_error> step();
 
-    // Normal column getters:
-    // Return null-like values (empty blob, 0.0, 0, "") for NULL values.
+    // All column getters mirror C-API error handling: "If the SQL statement does not currently point to a valid row, or
+    // if the column index is out of range, the result is undefined"
+
+    // Normal column getters: return null-like values (empty blob, 0.0, 0, "") for NULL values.
 
     // sqlite3_column_blob() and sqlite3_column_bytes().
     expected<span<const byte>, current_error> column_blob(int col);
@@ -340,6 +343,7 @@ public:
     database& operator=(database&& y) noexcept;
 
     // Force-close the underlying database using sqlite3_close_v2().
+    // If !NDEBUG, first it tries with sqlite3_close and asserts on failure.
     ~database();
 
     [[nodiscard]] sqlite3* handle() const
@@ -351,6 +355,7 @@ public:
     [[nodiscard]] expected<void, current_error> close();
 
     // sqlite3_exec().
+    // Exceptions thrown from the supplied row_callback will be turned into SQLITE_ABORT return value from the callback.
     // Note: The (deprecated) `PRAGMA empty_result_callbacks` allows calling `row_callback` even when the result has
     // zero rows. In this case the callback function will be called with an empty `column_texts` but valid
     // `column_names`. Otherwise, the size of the two spans are identical.
@@ -361,6 +366,7 @@ public:
     [[nodiscard]] expected<int, current_error> exec_then_changes(string_like_zt sql);
 
     // sqlite3_errmsg().
+    // Might return nullptr, just like sqlite3_errmsg().
     [[nodiscard]] const char* errmsg() const;
 
     // sqlite3_errcode().
@@ -372,11 +378,12 @@ public:
     // sqlite3_offset().
     [[nodiscard]] int error_offset() const;
 
-    // sqlite3_prepare().
+    // sqlite3_prepare_v2().
     // Note: if `sql` contains no SQL (if the input is an empty string or a comment), unexpected will be returned
     // with SQLITE_OK as the error. This is similar to sqlite3_prepare_v2() which returns SQLITE_OK but the statement
     // pointer is set to NULL.
-    expected<statement, current_error> prepare_v2(string_like sql);
+    expected<statement, current_error>
+    prepare_v2(string_like sql, const char** pzTail = nullptr /* OUT: Pointer to unused portion of zSql */);
 
 private:
     sqlite3* _db;

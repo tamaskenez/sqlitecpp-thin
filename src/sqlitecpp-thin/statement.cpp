@@ -7,22 +7,6 @@
         return unexpected(current_error(rc, db_handle())); \
     }
 
-#define RETURN_UNEXPECTED_ON_SQLITE3_ERRCODE                                 \
-    auto* db = db_handle();                                                  \
-    if (int rc = sqlite3_errcode(db); rc != SQLITE_OK && rc != SQLITE_ROW) { \
-        return unexpected(current_error(rc, db));                            \
-    }
-
-#define RETURN_UNEXPECTED_ON_ERROR_OR_NULLOPT_ON_NULL \
-    auto* db = db_handle();                           \
-    int rc = sqlite3_errcode(db);                     \
-    if (rc != SQLITE_OK && rc != SQLITE_ROW) {        \
-        return unexpected(current_error(rc, db));     \
-    }                                                 \
-    if (column_type(col) == datatype::null) {         \
-        return nullopt;                               \
-    }
-
 namespace sqlite
 {
 
@@ -114,7 +98,8 @@ expected<string_view, current_error> statement::column_text(int col)
     if (auto* db = db_handle(); sqlite3_errcode(db) == SQLITE_NOMEM) {
         return unexpected(current_error(SQLITE_NOMEM, db));
     }
-    return {};
+    using std::literals::string_view_literals::operator""sv;
+    return ""sv;
 }
 
 expected<optional<span<const byte>>, current_error> statement::column_blob_opt(int col)

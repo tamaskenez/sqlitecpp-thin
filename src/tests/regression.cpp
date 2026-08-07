@@ -8,6 +8,12 @@
 //
 //     tests --gtest_also_run_disabled_tests
 //
+// WARNING: two of them do not fail, they take the process down with them - a segfault for the error
+// formatting one, an assert in ~database() for the exec() one. That ends the whole run, so run those
+// two one at a time:
+//
+//     tests --gtest_also_run_disabled_tests --gtest_filter='*DISABLED_current_error*'
+//
 // The tests without the prefix pass today; they pin down behaviour the current implementation
 // relies on, or cover gaps that made the defects below possible in the first place.
 
@@ -217,6 +223,41 @@ TEST(regression, optional_column_getters_return_nullopt_for_null)
     EXPECT_FALSE(b->has_value()) << "SQL NULL was reported as a blob of " << (*b)->size() << " bytes";
 }
 
+// column_text() promises more than the other getters: "the `data()` of the returned value can be
+// used as `const char*` since it's zero-terminated", and NULL is documented to read back as "". Both
+// hold for a stored empty string, because SQLite hands back a pointer to a zero-terminated "" for
+// it. This one passes today.
+TEST(regression, column_text_of_an_empty_string_is_zero_terminated)
+{
+    auto db = make_db();
+    auto stmt = select_row(db, 0); // s = ''
+
+    auto s = stmt.column_text(3);
+    ASSERT_TRUE(s.has_value());
+    EXPECT_TRUE(s->empty());
+    ASSERT_NE(s->data(), nullptr);
+    EXPECT_STREQ(s->data(), "");
+}
+
+// For a real NULL, sqlite3_column_text() answers nullptr, and column_text() falls through to
+// `return {}`. That value-initializes the string_view, so data() is null - not the promised "".
+// A caller taking the documented route, printf("%s", sv.data()) or strlen(sv.data()), reads through
+// a null pointer on the first NULL column it meets.
+//
+// `return string_view("")` is enough. column_blob()'s `return {}` needs no change: an empty span is
+// exactly what that one advertises.
+TEST(regression, column_text_of_null_is_zero_terminated)
+{
+    auto db = make_db();
+    auto stmt = select_row(db, 1); // s IS NULL
+
+    auto s = stmt.column_text(3);
+    ASSERT_TRUE(s.has_value());
+    EXPECT_TRUE(s->empty());
+    ASSERT_NE(s->data(), nullptr) << "column_text() of a NULL returned a string_view with data() == nullptr";
+    EXPECT_STREQ(s->data(), "");
+}
+
 // --- prepare() ------------------------------------------------------------------------------
 
 // sqlite3_prepare_v2() returns SQLITE_OK with *ppStmt == nullptr for SQL that contains no
@@ -268,7 +309,104 @@ TEST(regression, prepare_of_nullptr_string)
     }
 }
 
+// --- exec() ---------------------------------------------------------------------------------
+
+// row_callback_caller() is a C callback: sqlite3_exec() calls it from inside its own C frames, and
+// it forwards to a std::function supplied by the caller. Nothing stops that from throwing, and an
+// exception then unwinds through SQLite. That is undefined behaviour on its own, but it also does
+// visible damage: SQLite's cleanup is skipped, so the statement sqlite3_exec() prepared internally
+// is never finalized. The connection is left holding it, close() fails with SQLITE_BUSY ("unable to
+// close due to unfinalized statements or unfinished backups"), and ~database() then trips its
+// assert.
+//
+// Not hypothetical: CHECK() in test_util.hpp throws, and database_test.cpp's exec_with_row_callback
+// uses CHECK() inside an exec() row callback. A failing CHECK there would wreck the connection
+// instead of reporting a test failure.
+//
+// The fix is to stop the exception at the C boundary. This test assumes it gets caught and turned
+// into a non-zero return, so exec() reports SQLITE_ABORT like any other callback that asks to stop.
+// If row_callback_caller() is made `noexcept` instead - std::terminate() rather than UB - then this
+// test should become an EXPECT_DEATH.
+//
+// WARNING: today this test does not fail, it aborts the process in the destructor of `db`, after
+// printing its failed expectations. Run it on its own.
+TEST(regression, exec_row_callback_that_throws)
+{
+    auto db = make_db();
+
+    bool escaped = false;
+    try {
+        auto exec_result =
+          db.exec("SELECT i FROM t", [](std::span<const char* const>, std::span<const char* const>) -> int {
+              throw std::runtime_error("from the row callback");
+          });
+        EXPECT_FALSE(exec_result) << "a row callback that could not run should be reported as an error";
+    } catch (const std::runtime_error&) {
+        escaped = true;
+    }
+    EXPECT_FALSE(escaped) << "the exception unwound through sqlite3_exec()'s C frames";
+
+    // The real damage, and the part that outlives the exception.
+    EXPECT_TRUE(db.close()) << "the connection was left holding the statement sqlite3_exec() failed to finalize";
+}
+
 // --- error formatting -----------------------------------------------------------------------
+
+// current_error keeps the connection handle only when the error was really recorded on it,
+// otherwise it stores nullptr. In that state errmsg() answers nullptr - which is not documented in
+// the header, and which get_error() feeds straight into `error::errmsg`, a std::string.
+//
+// The states with no connection are not exotic, they are documented outcomes: prepare_v2() of SQL
+// that contains no statement, prepare_v2(nullptr), and step_expect_done_then_changes() when the
+// statement produced a row. This test pins the precondition, without touching get_error().
+TEST(regression, current_error_without_a_connection_has_no_errmsg)
+{
+    auto db = make_db();
+    {
+        auto stmt = db.prepare_v2("-- just a comment");
+        ASSERT_FALSE(stmt);
+        EXPECT_EQ(stmt.error().errcode(), SQLITE_OK);
+        EXPECT_EQ(stmt.error().errmsg(), nullptr);
+    }
+    {
+        auto stmt = db.prepare_v2(nullptr);
+        ASSERT_FALSE(stmt);
+        EXPECT_EQ(stmt.error().errcode(), SQLITE_MISUSE);
+        EXPECT_EQ(stmt.error().errmsg(), nullptr);
+    }
+    {
+        auto stmt = db.prepare_v2("SELECT i FROM t").value();
+        auto changes = stmt.step_expect_done_then_changes();
+        ASSERT_FALSE(changes);
+        EXPECT_EQ(changes.error().errcode(), SQLITE_ROW);
+        EXPECT_EQ(changes.error().errmsg(), nullptr);
+    }
+}
+
+// Constructing a std::string from nullptr is undefined behaviour, and in practice it segfaults in
+// strlen. So every one of those states is a crash waiting for the caller to ask what went wrong -
+// through get_error(), or through format(), which is get_error() plus a bit of text.
+//
+// Three tests above produce exactly this error object and get away with it only because they never
+// format it. column_type_of_a_null_value has it worse: its ASSERT_TRUE message calls format(), so if
+// that assertion ever fired it would crash instead of reporting the failure.
+//
+// `errmsg() ? errmsg() : ""` in get_error() fixes it. errmsg() returning nullptr is worth a line in
+// the header either way.
+//
+// WARNING: today this test does not fail, it segfaults. Run it on its own.
+TEST(regression, current_error_without_a_connection_can_be_formatted)
+{
+    auto db = make_db();
+    auto stmt = db.prepare_v2("-- just a comment");
+    ASSERT_FALSE(stmt);
+
+    const auto e = stmt.error().get_error();
+    EXPECT_EQ(e.errcode, SQLITE_OK);
+    EXPECT_TRUE(e.errmsg.empty());
+
+    EXPECT_FALSE(stmt.error().format().empty());
+}
 
 // sqlite3_errstr() is documented to return NULL for a result code that has no text message
 // available, and its message table really does hold NULL entries: SQLITE_INTERNAL, SQLITE_EMPTY,
@@ -320,4 +458,11 @@ TEST(regression, errcode_macro_name_returns_null_for_unknown_codes)
     EXPECT_EQ(sqlite::errcode_macro_name(-12345), nullptr);
     EXPECT_EQ(sqlite::errcode_macro_name(999999), nullptr);
     EXPECT_STREQ(sqlite::errcode_macro_name(SQLITE_ERROR), "SQLITE_ERROR");
+}
+
+TEST(regression, string_like_size_with_literal)
+{
+    const auto sl = sqlite::string_like("abc");
+    EXPECT_EQ(sl.size(), 3);
+    EXPECT_EQ(strncmp(sl.data(), "abc", 3), 0);
 }

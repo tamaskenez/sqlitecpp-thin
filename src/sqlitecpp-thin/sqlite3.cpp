@@ -2,10 +2,6 @@
 
 #include "common.hpp"
 
-#include <cassert>
-#include <utility>
-#include <variant>
-
 namespace sqlite
 {
 

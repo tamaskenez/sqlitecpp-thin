@@ -64,8 +64,12 @@ int current_error::error_offset() const
 
 error current_error::get_error() const
 {
+    const auto msg = errmsg();
     return sqlite::error{
-      .errcode = _errcode, .extended_errcode = extended_errcode(), .errmsg = errmsg(), .error_offset = error_offset()
+      .errcode = _errcode,
+      .extended_errcode = extended_errcode(),
+      .errmsg = msg ? string(msg) : string(),
+      .error_offset = error_offset()
     };
 }
 

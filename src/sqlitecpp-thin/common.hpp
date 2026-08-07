@@ -16,6 +16,8 @@ namespace sqlite
 using std::nullopt;
 using std::unexpected;
 
+// Use this instead of static_cast for integer->integer conversion.
+// It asserts correctness (if !NDEBUG).
 template<class To, class From>
     requires std::integral<To> && std::integral<From>
 constexpr To iicast(From f)
